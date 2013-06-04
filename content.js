@@ -7,10 +7,10 @@
   // global variables
   var subsRootElem;
   var timerId;
-  var currentTime;
-  var previousTime;
   var timeTable;
   var timeTableLength;
+  var currentTime;
+  var previousTime;
   var playerObject;
   var playerContainer;
   var playTimeBox;
@@ -170,23 +170,26 @@
     });
     wrapForm.addEventListener('submit', function(e) {
       e.preventDefault();
-      var time = playTimeBox.value.split(':');
-      runningTime = time[0] * 60 * 1000 + time[1] * 1000;
-      runningTime = Math.floor(runningTime / 10) * 10;
-      status = 'pause';
-      console.log('set ' + runningTime + ' ms');
-      for (var i = 0; i < timeTableLength; i++) {
-        if (runningTime <= timeTable[i].time) {
-          eventIndex = i == 0 ? i : i - 1;
-          break;
-        }
-      }
+      setSoughtTime();
     });
   }
+  function setSoughtTime() {
+    var timeElem = document.querySelector('#chrome-subtitles-play-time');
+    var times = timeElem.value.split(':');
+    runningTime = times[0] * 60 * 1000 + times[1] * 1000;
+    status = 'pause';
+    console.log('set ' + runningTime + ' ms');
+    for (var i = 0; i < timeTableLength; i++) {
+      if (runningTime <= timeTable[i].time) {
+        eventIndex = i == 0 ? i : i - 1;
+        break;
+      }
+    }
+  }
 
-  //
-  // styles
-  //
+  // 
+  // dom
+  // 
   function appendStyles (styleObj) {
     var styleElem = document.createElement('style');
     document.querySelector('head').appendChild(styleElem);
@@ -203,6 +206,16 @@
       css.insertRule(s, css.cssRules.length);
     }
   }
+  function toggleActive() {
+    var elem = document.querySelector('#chrome-subtitles-play');
+    if (elem.className.indexOf('active') == -1) {
+      elem.className += ' active';
+      elem.value = '❙❙';
+    } else {
+      elem.className = elem.className.replace(/\s?active/, '');
+      elem.value = '▶';
+    }
+  }
   function updateTimeBox() {
     var m, s;
     m = Math.floor(runningTime / 1000 / 60);
@@ -211,11 +224,6 @@
     s = s < 10 ? '0' + s : s;
     playTimeBox.value = m + ':' + s;
   }
-
-
-  // 
-  // add/remove texts
-  // 
   function addText(obj) {
     var text, lines;
     text = document.createElement('div');
@@ -267,14 +275,17 @@
       console.log('end');
     }
   }
-  function start() {
-    if (timeTable) {
-      removeAll();
+  function play() {
+    removeAll();
+    if (status == 'ready') {
       runningTime = 0;
       eventIndex = 0;
+    }
+    removeAll();
+    if (timeTable) {
       status = 'playing';
-      toggleActive(document.querySelector('#chrome-subtitles-play'));
-      console.log('start');
+      toggleActive();
+      console.log('play');
       previousTime = new Date();
       timerId = setInterval(mainLoop, 50);
     } else {
@@ -287,24 +298,7 @@
       status = 'pause';
       console.log('pause');
       console.log('running time(ms): ' + runningTime);
-      toggleActive(document.querySelector('#chrome-subtitles-play'));
-    }
-  }
-  function play() {
-    if (status == 'ready') {
-      start();
-    }
-    if (status == 'pause') {
-      removeAll();
-      if (timeTable) {
-        status = 'playing';
-        toggleActive(document.querySelector('#chrome-subtitles-play'));
-        console.log('continue');
-        previousTime = new Date();
-        timerId = setInterval(mainLoop, 50);
-      } else {
-        console.warn('no subs');
-      }
+      toggleActive();
     }
   }
   function togglePlayPause() {
@@ -312,19 +306,6 @@
       play();
     } else {
       pause();
-    }
-  }
-
-  // 
-  // class
-  // 
-  function toggleActive(elem) {
-    if (elem.className.indexOf('active') == -1) {
-      elem.className += ' active';
-      elem.value = '❙❙';
-    } else {
-      elem.className = elem.className.replace(/\s?active/, '');
-      elem.value = '▶';
     }
   }
 
