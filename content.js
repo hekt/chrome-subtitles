@@ -7,7 +7,8 @@
   // global variables
   var subsRootElem;
   var timerId;
-  var initialTime;
+  var currentTime;
+  var previousTime;
   var timeTable;
   var timeTableLength;
   var playerObject;
@@ -180,7 +181,6 @@
           break;
         }
       }
-      play();
     });
   }
 
@@ -241,17 +241,25 @@
   // 
   function mainLoop() {
     var time, target;
-    runningTime += 10;
+
+    currentTime = new Date();
+    runningTime += currentTime - previousTime;
+    previousTime = currentTime;
     updateTimeBox();
-    time = runningTime - delayMs;
+
+    time = Math.floor((runningTime - delayMs) / 100) * 100;
     target = timeTable[eventIndex];
-    if (time == target.time) {
-      target.event == 'start' ? addText(target) : removeText(target);
-      eventIndex += 1;
-    } else if (time > target.time) {
+
+    while(target && time > target.time) {
       removeText(target);
       console.info('id: ' + target.id + ' skipped');
       eventIndex += 1;
+      target = timeTable[eventIndex];
+    }
+    while(target && time == target.time) {
+      target.event == 'start' ? addText(target) : removeText(target);
+      eventIndex += 1;
+      target = timeTable[eventIndex];
     }
     if (eventIndex >= timeTableLength) {
       pause();
@@ -267,7 +275,8 @@
       status = 'playing';
       toggleActive(document.querySelector('#chrome-subtitles-play'));
       console.log('start');
-      timerId = setInterval(mainLoop, 10);
+      previousTime = new Date();
+      timerId = setInterval(mainLoop, 50);
     } else {
       console.warn('no subs');
     }
@@ -287,12 +296,12 @@
     }
     if (status == 'pause') {
       removeAll();
-      initialTime = new Date();
       if (timeTable) {
         status = 'playing';
         toggleActive(document.querySelector('#chrome-subtitles-play'));
         console.log('continue');
-        timerId = setInterval(mainLoop, 10);
+        previousTime = new Date();
+        timerId = setInterval(mainLoop, 50);
       } else {
         console.warn('no subs');
       }
