@@ -11,10 +11,10 @@ Currently, this extension works only with www.hulu.jp.
 ## Supported formats
 
 - srt
-- ass (V+ Styles)
+- ass (V4+ Styles)
 
 
-## usage
+## Usage
 
 Click the icon where the omni bar and selects a subtitle file.
 
@@ -24,15 +24,15 @@ Play / Pause
 
 ### + / 0 / -
 
-Incerease / Decrease delay by 100 ms.
+Incerease / decrease delay by 100 ms.
 
 ### Sync
 
 Toggle play/pause of subtitles when click the embed video if this enabled.
 
 
-## todo
+## TODO
 
-- play/pause in a single button
-- seek
+- ~~play/pause in a single button~~
+- ~~seek~~
 - support youtube and others
