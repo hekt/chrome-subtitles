@@ -22,13 +22,17 @@ Click the icon where the omni bar and selects a subtitle file.
 
 Play / Pause
 
-### + / 0 / -
+### ...
+
+Toggle play/pause of subtitles when click the embed video if this enabled.
+
+### + / = / -
 
 Incerease / decrease delay by 100 ms.
 
-### Sync
+### Seek
 
-Toggle play/pause of subtitles when click the embed video if this enabled.
+input time to text box and press enter/return
 
 
 ## TODO
