@@ -101,7 +101,7 @@
     var ctrlReset = document.createElement('input');
     ctrlReset.id = 'chrome-subtitles-adjust-reset';
     ctrlReset.type = 'button';
-    ctrlReset.value = '0';
+    ctrlReset.value = '=';
 
     var ctrlClickToPlay = document.createElement('input');
     ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
@@ -171,14 +171,16 @@
       e.preventDefault();
       var time = playTimeBox.value.split(':');
       runningTime = time[0] * 60 * 1000 + time[1] * 1000;
+      runningTime = Math.floor(runningTime / 10) * 10;
       status = 'pause';
       console.log('set ' + runningTime + ' ms');
       for (var i = 0; i < timeTableLength; i++) {
-        if (runningTime < timeTable[i].time) {
-          eventIndex = i;
+        if (runningTime <= timeTable[i].time) {
+          eventIndex = i == 0 ? i : i - 1;
           break;
         }
       }
+      play();
     });
   }
 
@@ -284,6 +286,7 @@
       start();
     }
     if (status == 'pause') {
+      removeAll();
       initialTime = new Date();
       if (timeTable) {
         status = 'playing';
