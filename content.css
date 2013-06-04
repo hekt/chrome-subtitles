@@ -71,8 +71,7 @@
     color: #888;
     top: 1px;
 }
-#chrome-subtitles-controllers #chrome-subtitles-adjust-delay,
-#chrome-subtitles-controllers #chrome-subtitles-pause {
+#chrome-subtitles-controllers #chrome-subtitles-click-to-play {
     margin-right: 32px;
 }
 

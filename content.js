@@ -1,20 +1,20 @@
 (function() {
   var parser = new SubtitleParser();
-  var rootId = 'chrome-subtitles-root';
-  var wrapClass = 'chrome-subtitles-text';
-  var lineClass = 'chrome-subtitles-line';
+  var subsRootId = 'chrome-subtitles-root';
+  var subsWrapClass = 'chrome-subtitles-text';
+  var subsLineClass = 'chrome-subtitles-line';
 
   // global variables
-  var subtitlesRoot;
+  var subsRootElem;
   var timerId;
   var initialTime;
   var timeTable;
   var timeTableLength;
-  var playerObj;
+  var playerObject;
   var playerContainer;
-  var count = 0;
+  var eventIndex = 0;
   var runningTime = 0;
-  var adjustMs = 0;
+  var delayMs = 0;
   var status = 'ready';
 
   //
@@ -30,13 +30,8 @@
     var uiInputFile = document.createElement('input');
     uiInputFile.id = 'chrome-subtitles-ui-file-selector';
     uiInputFile.type = 'file';
-    // var uiInputStart = document.createElement('input');
-    // uiInputStart.id = 'chrome-subtitles-ui-start-button';
-    // uiInputStart.type = 'button';
-    // uiInputStart.value = 'Start';
 
     uiBody.appendChild(uiInputFile);
-    // uiBody.appendChild(uiInputStart);
     uiWrap.appendChild(uiBody);
     document.body.appendChild(uiWrap);
 
@@ -90,10 +85,6 @@
     ctrlPlay.id = 'chrome-subtitles-play';
     ctrlPlay.type = 'button';
     ctrlPlay.value = '▶';
-    var ctrlPause = document.createElement('input');
-    ctrlPause.id = 'chrome-subtitles-pause';
-    ctrlPause.type = 'button';
-    ctrlPause.value = '❙❙';
 
     var ctrlDelay = document.createElement('input');
     ctrlDelay.id = 'chrome-subtitles-adjust-delay';
@@ -111,14 +102,13 @@
     var ctrlClickToPlay = document.createElement('input');
     ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
     ctrlClickToPlay.type = 'button';
-    ctrlClickToPlay.value = 'Sync';
+    ctrlClickToPlay.value = '...';
     
     ctrlWrap.appendChild(ctrlPlay);
-    ctrlWrap.appendChild(ctrlPause);
+    ctrlWrap.appendChild(ctrlClickToPlay);
     ctrlWrap.appendChild(ctrlAdvance);
     ctrlWrap.appendChild(ctrlReset);
     ctrlWrap.appendChild(ctrlDelay);
-    ctrlWrap.appendChild(ctrlClickToPlay);
     document.body.appendChild(ctrlWrap);
 
     addEventListenersForControllers();
@@ -128,35 +118,38 @@
     if (ctrlObj) document.body.removeChild(ctrlObj);
   }
   function addEventListenersForControllers() {
-    var play = document.querySelector('#chrome-subtitles-play');
-    var pause = document.querySelector('#chrome-subtitles-pause');
-    var delay = document.querySelector('#chrome-subtitles-adjust-delay');
-    var advance = document.querySelector('#chrome-subtitles-adjust-advance');
-    var reset = document.querySelector('#chrome-subtitles-adjust-reset');
-    var syncPlay = 
-          document.querySelector('#chrome-subtitles-click-to-play');
+    var playButton = document.querySelector('#chrome-subtitles-play');
+    var delayButton = document.querySelector('#chrome-subtitles-adjust-delay');
+    var advButton = document.querySelector('#chrome-subtitles-adjust-advance');
+    var resetButton = document.querySelector('#chrome-subtitles-adjust-reset');
+    var syncButton = document.querySelector('#chrome-subtitles-click-to-play');
 
-    play.addEventListener('click', resume);
-    pause.addEventListener('click', stop);
-    delay.addEventListener('click', function() {
-      adjustMs += 100;
-      console.log(adjustMs + 'ms delay');
+    playButton.addEventListener('click', function() {
+      if (status == 'ready' || status == 'pause') {
+        play();
+      } else {
+        pause();
+      }
     });
-    advance.addEventListener('click', function() {
-      adjustMs -= 100;
-      console.log(adjustMs + 'ms delay');
+    delayButton.addEventListener('click', function() {
+      delayMs += 100;
+      console.log(delayMs + 'ms delay');
     });
-    reset.addEventListener('click', function() {
-      adjustMs = 0;
+    advButton.addEventListener('click', function() {
+      delayMs -= 100;
+      console.log(delayMs + 'ms delay');
+    });
+    resetButton.addEventListener('click', function() {
+      delayMs = 0;
       console.log('no delay');
     });
-    syncPlay.addEventListener('click', function() {
-      if (syncPlay.className.indexOf('active') == -1) {
-        syncPlay.className += ' active';
-        playerObj.addEventListener('mouseup', togglePlayPause);
+    syncButton.addEventListener('click', function() {
+      if (syncButton.className.indexOf('active') == -1) {
+        syncButton.className += ' active';
+        playerObject.addEventListener('mouseup', togglePlayPause);
       } else {
-        syncPlay.className = syncPlay.className.replace(/\s?active/, '');
-        playerObj.removeEventListener('mouseup', togglePlayPause);
+        syncButton.className = syncButton.className.replace(/\s?active/, '');
+        playerObject.removeEventListener('mouseup', togglePlayPause);
       }
     });
   }
@@ -176,7 +169,7 @@
       for (var k in d) {
         l.push(k + ':' + d[k] + ';');
       }
-      s = '.' + className + ' .' + lineClass + ' {' + l.join('') + '}';
+      s = '.' + className + ' .' + subsLineClass + ' {' + l.join('') + '}';
       css.insertRule(s, css.cssRules.length);
     }
   }
@@ -188,21 +181,21 @@
   function addText(obj) {
     var text, lines;
     text = document.createElement('div');
-    text.className = wrapClass;
+    text.className = subsWrapClass;
     text.id = obj.id;
     if (obj.className) text.className += ' ' + obj.className;
-    lines = '<span class="' + lineClass + '">' +
-      obj.texts.join('</span><br><span class="' + lineClass + '">') +
+    lines = '<span class="' + subsLineClass + '">' +
+      obj.texts.join('</span><br><span class="' + subsLineClass + '">') +
       '</span>';
     text.innerHTML = lines;
-    subtitlesRoot.appendChild(text);
+    subsRootElem.appendChild(text);
   }
   function removeText(obj) {
     var elem = document.getElementById(obj.id);
-    if (elem) subtitlesRoot.removeChild(elem);
+    if (elem) subsRootElem.removeChild(elem);
   }
   function removeAll() {
-    if (subtitlesRoot) subtitlesRoot.innerHTML = null;
+    if (subsRootElem) subsRootElem.innerHTML = null;
   }
 
   // 
@@ -210,21 +203,21 @@
   // 
   function mainLoop() {
     var time, target;
-    time = new Date() - initialTime - adjustMs + runningTime;
+    time = new Date() - initialTime - delayMs + runningTime;
     time = time / 100;
     time = Math.round(time);
     time = time * 100;
-    target = timeTable[count];
+    target = timeTable[eventIndex];
     if (time == target.time) {
       target.event == 'start' ? addText(target) : removeText(target);
-      count += 1;
+      eventIndex += 1;
     } else if (time > target.time) {
       removeText(target);
       console.info('id: ' + target.id + ' skipped');
-      count += 1;
+      eventIndex += 1;
     }
-    if (count >= timeTableLength) {
-      stop();
+    if (eventIndex >= timeTableLength) {
+      pause();
       status = 'ready';
       console.log('end');
     }
@@ -234,7 +227,7 @@
       removeAll();
       runningTime = 0;
       initialTime = new Date();
-      count = 0;
+      eventIndex = 0;
       timerId = setInterval(mainLoop, 10);
       status = 'playing';
       toggleActive(document.querySelector('#chrome-subtitles-play'));
@@ -243,21 +236,21 @@
       console.warn('no subs');
     }
   }
-  function stop() {
+  function pause() {
     if (status == 'playing') {
       runningTime += new Date() - initialTime;
       clearInterval(timerId);
-      status = 'stop';
-      console.log('stop');
+      status = 'pause';
+      console.log('pause');
       console.log('running time(ms): ' + runningTime);
       toggleActive(document.querySelector('#chrome-subtitles-play'));
     }
   }
-  function resume() {
+  function play() {
     if (status == 'ready') {
       start();
     }
-    if (status == 'stop') {
+    if (status == 'pause') {
       initialTime = new Date();
       if (timeTable) {
         timerId = setInterval(mainLoop, 10);
@@ -270,10 +263,10 @@
     }
   }
   function togglePlayPause() {
-    if (status == 'ready' || status == 'stop') {
-      resume();
+    if (status == 'ready' || status == 'pause') {
+      play();
     } else {
-      stop();
+      pause();
     }
   }
 
@@ -283,8 +276,10 @@
   function toggleActive(elem) {
     if (elem.className.indexOf('active') == -1) {
       elem.className += ' active';
+      elem.value = '❙❙';
     } else {
       elem.className = elem.className.replace(/\s?active/, '');
+      elem.value = '▶';
     }
   }
 
@@ -297,7 +292,7 @@
     var playerSelector, containerSelector;
 
     root = document.createElement('div');
-    root.id = rootId;
+    root.id = subsRootId;
 
     if (/^https?:\/\/www\.hulu\.jp/.test(url)) {
       playerSelector = 'embed#player';
@@ -307,12 +302,12 @@
       containerSelector = 'body';
     }
 
-    playerObj = document.querySelector(playerSelector);
-    playerObj.setAttribute('wmode', 'transparent');
+    playerObject = document.querySelector(playerSelector);
+    playerObject.setAttribute('wmode', 'transparent');
     playerContainer = document.querySelector(containerSelector);
     playerContainer.style.position = 'relative';
     playerContainer.appendChild(root);
-    subtitlesRoot = document.querySelector('#' + rootId);
+    subsRootElem = document.querySelector('#' + subsRootId);
   }
 
   // 
