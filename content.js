@@ -12,6 +12,7 @@
   var timeTableLength;
   var playerObject;
   var playerContainer;
+  var playTimeBox;
   var eventIndex = 0;
   var runningTime = 0;
   var delayMs = 0;
@@ -81,6 +82,9 @@
     var ctrlWrap = document.createElement('div');
     ctrlWrap.id = 'chrome-subtitles-controllers';
 
+    var ctrlForm = document.createElement('form');
+    ctrlForm.id = 'chrome-subtitles-form';
+
     var ctrlPlay = document.createElement('input');
     ctrlPlay.id = 'chrome-subtitles-play';
     ctrlPlay.type = 'button';
@@ -103,12 +107,19 @@
     ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
     ctrlClickToPlay.type = 'button';
     ctrlClickToPlay.value = '...';
+
+    var ctrlPlayTime = document.createElement('input');
+    ctrlPlayTime.id = 'chrome-subtitles-play-time';
+    ctrlPlayTime.type = 'text';
+    ctrlPlayTime.value = '00:00';
     
-    ctrlWrap.appendChild(ctrlPlay);
-    ctrlWrap.appendChild(ctrlClickToPlay);
-    ctrlWrap.appendChild(ctrlAdvance);
-    ctrlWrap.appendChild(ctrlReset);
-    ctrlWrap.appendChild(ctrlDelay);
+    ctrlForm.appendChild(ctrlPlay);
+    ctrlForm.appendChild(ctrlClickToPlay);
+    ctrlForm.appendChild(ctrlPlayTime);
+    ctrlForm.appendChild(ctrlAdvance);
+    ctrlForm.appendChild(ctrlReset);
+    ctrlForm.appendChild(ctrlDelay);
+    ctrlWrap.appendChild(ctrlForm);
     document.body.appendChild(ctrlWrap);
 
     addEventListenersForControllers();
@@ -123,6 +134,10 @@
     var advButton = document.querySelector('#chrome-subtitles-adjust-advance');
     var resetButton = document.querySelector('#chrome-subtitles-adjust-reset');
     var syncButton = document.querySelector('#chrome-subtitles-click-to-play');
+    var wrapForm = document.querySelector('#chrome-subtitles-form');
+
+    // global
+    playTimeBox = document.querySelector('#chrome-subtitles-play-time');
 
     playButton.addEventListener('click', function() {
       if (status == 'ready' || status == 'pause') {
@@ -152,6 +167,19 @@
         playerObject.removeEventListener('mouseup', togglePlayPause);
       }
     });
+    wrapForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var time = playTimeBox.value.split(':');
+      runningTime = time[0] * 60 * 1000 + time[1] * 1000;
+      status = 'pause';
+      console.log('set ' + runningTime + ' ms');
+      for (var i = 0; i < timeTableLength; i++) {
+        if (runningTime < timeTable[i].time) {
+          eventIndex = i;
+          break;
+        }
+      }
+    });
   }
 
   //
@@ -172,6 +200,14 @@
       s = '.' + className + ' .' + subsLineClass + ' {' + l.join('') + '}';
       css.insertRule(s, css.cssRules.length);
     }
+  }
+  function updateTimeBox() {
+    var m, s;
+    m = Math.floor(runningTime / 1000 / 60);
+    m = m < 10 ? '0' + m : m;
+    s = Math.floor(runningTime / 1000) % 60;
+    s = s < 10 ? '0' + s : s;
+    playTimeBox.value = m + ':' + s;
   }
 
 
@@ -203,10 +239,9 @@
   // 
   function mainLoop() {
     var time, target;
-    time = new Date() - initialTime - delayMs + runningTime;
-    time = time / 100;
-    time = Math.round(time);
-    time = time * 100;
+    runningTime += 10;
+    updateTimeBox();
+    time = runningTime - delayMs;
     target = timeTable[eventIndex];
     if (time == target.time) {
       target.event == 'start' ? addText(target) : removeText(target);
@@ -226,19 +261,17 @@
     if (timeTable) {
       removeAll();
       runningTime = 0;
-      initialTime = new Date();
       eventIndex = 0;
-      timerId = setInterval(mainLoop, 10);
       status = 'playing';
       toggleActive(document.querySelector('#chrome-subtitles-play'));
       console.log('start');
+      timerId = setInterval(mainLoop, 10);
     } else {
       console.warn('no subs');
     }
   }
   function pause() {
     if (status == 'playing') {
-      runningTime += new Date() - initialTime;
       clearInterval(timerId);
       status = 'pause';
       console.log('pause');
@@ -253,10 +286,10 @@
     if (status == 'pause') {
       initialTime = new Date();
       if (timeTable) {
-        timerId = setInterval(mainLoop, 10);
         status = 'playing';
         toggleActive(document.querySelector('#chrome-subtitles-play'));
         console.log('continue');
+        timerId = setInterval(mainLoop, 10);
       } else {
         console.warn('no subs');
       }

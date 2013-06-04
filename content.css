@@ -43,7 +43,9 @@
 #chrome-subtitles-controllers:hover {
     opacity: 1;
 }
-
+#chrome-subtitles-controllers form {
+    margin-bottom: 0;
+}
 #chrome-subtitles-controllers input {
     background: -webkit-linear-gradient(top,
                                         rgba(255,255,255,.3),
@@ -55,6 +57,7 @@
     height: 24px;
     line-height: 24px;
     margin: 12px 8px;
+    padding: 0;
     position: relative;
     width: 39px;
 }
@@ -73,6 +76,15 @@
 }
 #chrome-subtitles-controllers #chrome-subtitles-click-to-play {
     margin-right: 32px;
+}
+#chrome-subtitles-controllers #chrome-subtitles-play-time {
+    background: -webkit-linear-gradient(top,
+                                        rgba(255,255,255,.1),
+                                        rgba(255,255,255,.3));
+    cursor: text;
+    margin-right: 32px;
+    text-align: center;
+    width: 78px;
 }
 
 /* subtitles */
