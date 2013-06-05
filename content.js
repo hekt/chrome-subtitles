@@ -1,7 +1,8 @@
 (function() {
   var parser = new SubtitleParser();
   var subsRootId = 'chrome-subtitles-root';
-  var subsWrapClass = 'chrome-subtitles-text';
+  var subsWrapClass = 'chrome-subtitles-wrap';
+  var subsTextClass = 'chrome-subtitles-text';
   var subsLineClass = 'chrome-subtitles-line';
 
   // global variables
@@ -200,9 +201,13 @@
       l = [];
       d = styleObj[className];
       for (var k in d) {
+        if (k == 'background-color') continue;
         l.push(k + ':' + d[k] + ';');
       }
-      s = '.' + className + ' .' + subsLineClass + ' {' + l.join('') + '}';
+      s = '.' + className + ' {' + l.join('') + '}';
+      css.insertRule(s, css.cssRules.length);
+      s = '.' + className + ' .' + subsLineClass + ' {background-color: ' + 
+        d['background-color'] + ';}';
       css.insertRule(s, css.cssRules.length);
     }
   }
@@ -225,16 +230,19 @@
     playTimeBox.value = m + ':' + s;
   }
   function addText(obj) {
-    var text, lines;
+    var wrap, text, lines;
+    wrap = document.createElement('div');
+    wrap.className = subsWrapClass;
+    wrap.id = obj.id;
+    if (wrap.className) wrap.className += ' ' + obj.className;
     text = document.createElement('div');
-    text.className = subsWrapClass;
-    text.id = obj.id;
-    if (obj.className) text.className += ' ' + obj.className;
-    lines = '<span class="' + subsLineClass + '">' +
-      obj.texts.join('</span><br><span class="' + subsLineClass + '">') +
+    text.className = subsTextClass;
+    lines = '<span class="' + subsLineClass + '">' + 
+      obj.texts.join('</span><br><span class="' + subsLineClass + '">') + 
       '</span>';
     text.innerHTML = lines;
-    subsRootElem.appendChild(text);
+    wrap.appendChild(text);
+    subsRootElem.appendChild(wrap);
   }
   function removeText(obj) {
     var elem = document.getElementById(obj.id);
@@ -325,7 +333,7 @@
       containerSelector = '#player-container';
     } else {
       playerSelector = '#player-object';
-      containerSelector = 'body';
+      containerSelector = '#player-container';
     }
 
     playerObject = document.querySelector(playerSelector);

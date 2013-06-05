@@ -47,10 +47,10 @@
     margin-bottom: 0;
 }
 #chrome-subtitles-controllers input {
-    background: -webkit-linear-gradient(top,
-                                        rgba(255,255,255,.3),
-                                        rgba(255,255,255,.1));
-    border: none;
+    background: -webkit-linear-gradient(top, #666, #333);
+    border: 1px solid #222;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
     color: #AAA;
     cursor: pointer;
     display: inline-block;
@@ -62,42 +62,57 @@
     width: 39px;
 }
 #chrome-subtitles-controllers input:hover {
-    background: -webkit-linear-gradient(top,
-                                        rgba(255,255,255,.25),
-                                        rgba(255,255,255,.15));
+    background: -webkit-linear-gradient(top, #777, #444);
 }
-#chrome-subtitles-controllers input:active,
-#chrome-subtitles-controllers input.active{
-    background: -webkit-linear-gradient(top,
-                                        rgba(255,255,255,.1),
-                                        rgba(255,255,255,.3));
-    color: #888;
+#chrome-subtitles-controllers input[type="button"].active{
     top: 1px;
+    box-shadow: 0 1px 12px rgba(0,255,0,.8);
 }
-#chrome-subtitles-controllers #chrome-subtitles-click-to-play {
-    margin-right: 32px;
+#chrome-subtitles-controllers input[type="button"]:active {
+    top: 3px;
+    box-shadow: 0 1px 12px rgba(0,255,0,.8);
 }
-#chrome-subtitles-controllers #chrome-subtitles-play-time {
-    background: -webkit-linear-gradient(top,
-                                        rgba(255,255,255,.1),
-                                        rgba(255,255,255,.3));
+#chrome-subtitles-controllers input[type="text"] {
+    background: -webkit-linear-gradient(top, #333, #666);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.3);
     cursor: text;
     margin-right: 32px;
     text-align: center;
     width: 78px;
 }
+#chrome-subtitles-controllers input[type="text"]:focus {
+    background: -webkit-linear-gradient(top, #444, #777);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.3), 0 1px 12px rgba(0,255,0,.8);
+    outline-style: none;
+}
+#chrome-subtitles-controllers #chrome-subtitles-click-to-play {
+    margin-right: 32px;
+}
 
 /* subtitles */
 #chrome-subtitles-root {
-    bottom: 5%;
-    left: 0;
     font-size: 24px;
     margin: 0;
     padding: 0;
     position: absolute;
+    top: 0;
+    left: 0;
     text-align: center;
     width: 100%;
+    height: 100%;
     z-index: 100;
+}
+
+.chrome-subtitles-wrap {
+    position: absolute;
+    bottom: 5%;
+    left: 0;
+    width: 100%;
+    color: #FFF;
+    text-shadow: 1px 1px #000, 
+                 1px -1px #000,
+                 -1px 1px #000,
+                 -1px -1px #000;
 }
 
 .chrome-subtitles-text {
@@ -110,20 +125,15 @@
 }
 
 .chrome-subtitles-line {
-    color: #FFF;
     background-color: rgba(0,0,0,.5);
     display: inline-block;
     margin: 0.1em 0 0;
     padding: 0.1em 0.3em;
-    text-shadow: 1px 1px #000, 
-                 1px -1px #000,
-                 -1px 1px #000,
-                 -1px -1px #000;
 }
 
 
 /* www.hulu.jp */
-#player-container:hover .chrome-subtitles-text {
+#player-container:hover #chrome-subtitles-root {
     display: none;
 }
 

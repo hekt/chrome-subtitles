@@ -132,7 +132,7 @@ var SubtitleParser = function() {
     }
 
     var styleObjs = getObjs(blockContent);
-    var deco, decos, outline, o, style;
+    var className, classBody, deco, decos, outline, o, style;
     var outlineColourName = 'OutlineColour' in styleObjs[0] ?
           'OutlineColour' : 'TertiaryColour';
 
@@ -140,6 +140,8 @@ var SubtitleParser = function() {
     for (var i = 0; i < styleObjs.length; i++) {
       o = styleObjs[i];
       
+      className = o['Name'].toLowerCase();
+
       decos = [];
       if (o['Underline'] == '1') decos.push('underline');
       if (o['StrikeOut'] == '1') decos.push('line-through');
@@ -150,7 +152,7 @@ var SubtitleParser = function() {
           return e + ' ' + toRGBA(o[outlineColourName]);
         }).join(', ');
       
-      cssObj[o['Name'].toLowerCase()] = {
+      classBody = {
         'font-family': o['Fontname'],
         'color': toRGBA(o['PrimaryColour']),
         'text-shadow': outline,
@@ -160,8 +162,25 @@ var SubtitleParser = function() {
         'text-decoration': deco,
         'text-spacing': o['Spacing'] + ' px'
       };
-    }
 
+      var alg = o['Alignment'];
+      if (alg % 3 == 0) {
+        classBody['text-align'] = 'right';
+      } else if (alg % 3 == 1) {
+        classBody['text-align'] = 'left';
+      } else {
+        classBody['text-align'] = 'center';
+      }
+      if (alg / 3 > 2) {
+        classBody['top'] = '5%';
+      } else if (alg / 3 > 1) {
+        classBody['top'] = '50%';
+      } else {
+        classBody['bottom'] = '5%';
+      }
+
+      cssObj[className] = classBody;
+    }
     return cssObj;
   }
 
