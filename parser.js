@@ -35,6 +35,9 @@ var SubtitleParser = function() {
       return 'rgb(' + [r,g,b].join(', ') + ')';
     }
   }
+  function removeAssInlineCommands(str) {
+    return str.replace(/{\\[^}]+}/g, '');
+  }
 
   function getBlocks(reStr, string) {
     var result = {};
@@ -65,7 +68,7 @@ var SubtitleParser = function() {
         id: id,
         className: values[3].toLowerCase(),
         texts: values[9].split('\\N').filter(function (e) {
-          return e != ''; })
+          return e != ''; }).map(removeAssInlineCommands)
       });
       events.push({
         event: 'end',
