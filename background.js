@@ -3,7 +3,7 @@
     if (inf.status === 'complete') {
       var rs = [
         /^file:\/\//,
-        /^https?:\/\/www.hulu.jp\/watch\//
+        /^https?:\/\/www\.hulu\.jp\/watch\//
       ];
       for (var i = 0; i < rs.length; i++) {
         if (rs[i].test(tab.url)) {

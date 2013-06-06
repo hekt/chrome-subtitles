@@ -91,36 +91,36 @@
     ctrlPlay.id = 'chrome-subtitles-play';
     ctrlPlay.type = 'button';
     ctrlPlay.value = '▶';
-
-    var ctrlDelay = document.createElement('input');
-    ctrlDelay.id = 'chrome-subtitles-adjust-delay';
-    ctrlDelay.type = 'button';
-    ctrlDelay.value = '+';
-    var ctrlAdvance = document.createElement('input');
-    ctrlAdvance.id = 'chrome-subtitles-adjust-advance';
-    ctrlAdvance.type = 'button';
-    ctrlAdvance.value = '-';
-    var ctrlReset = document.createElement('input');
-    ctrlReset.id = 'chrome-subtitles-adjust-reset';
-    ctrlReset.type = 'button';
-    ctrlReset.value = '=';
+    ctrlForm.appendChild(ctrlPlay);
 
     var ctrlClickToPlay = document.createElement('input');
     ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
     ctrlClickToPlay.type = 'button';
     ctrlClickToPlay.value = '...';
+    ctrlForm.appendChild(ctrlClickToPlay);
 
     var ctrlPlayTime = document.createElement('input');
     ctrlPlayTime.id = 'chrome-subtitles-play-time';
     ctrlPlayTime.type = 'text';
     ctrlPlayTime.value = '00:00';
-    
-    ctrlForm.appendChild(ctrlPlay);
-    ctrlForm.appendChild(ctrlClickToPlay);
     ctrlForm.appendChild(ctrlPlayTime);
+
+    var ctrlAdvance = document.createElement('input');
+    ctrlAdvance.id = 'chrome-subtitles-adjust-advance';
+    ctrlAdvance.type = 'button';
+    ctrlAdvance.value = '-';
     ctrlForm.appendChild(ctrlAdvance);
+    var ctrlReset = document.createElement('input');
+    ctrlReset.id = 'chrome-subtitles-adjust-reset';
+    ctrlReset.type = 'button';
+    ctrlReset.value = '=';
     ctrlForm.appendChild(ctrlReset);
+    var ctrlDelay = document.createElement('input');
+    ctrlDelay.id = 'chrome-subtitles-adjust-delay';
+    ctrlDelay.type = 'button';
+    ctrlDelay.value = '+';
     ctrlForm.appendChild(ctrlDelay);
+
     ctrlWrap.appendChild(ctrlForm);
     document.body.appendChild(ctrlWrap);
 
@@ -131,16 +131,10 @@
     if (ctrlObj) document.body.removeChild(ctrlObj);
   }
   function addEventListenersForControllers() {
-    var playButton = document.querySelector('#chrome-subtitles-play');
-    var delayButton = document.querySelector('#chrome-subtitles-adjust-delay');
-    var advButton = document.querySelector('#chrome-subtitles-adjust-advance');
-    var resetButton = document.querySelector('#chrome-subtitles-adjust-reset');
-    var syncButton = document.querySelector('#chrome-subtitles-click-to-play');
-    var wrapForm = document.querySelector('#chrome-subtitles-form');
-
     // global
     playTimeBox = document.querySelector('#chrome-subtitles-play-time');
 
+    var playButton = document.querySelector('#chrome-subtitles-play');
     playButton.addEventListener('click', function() {
       if (status == 'ready' || status == 'pause') {
         play();
@@ -148,18 +142,23 @@
         pause();
       }
     });
+    var delayButton = document.querySelector('#chrome-subtitles-adjust-delay');
     delayButton.addEventListener('click', function() {
       delayMs += 100;
       console.log(delayMs + 'ms delay');
     });
+    var advButton = document.querySelector('#chrome-subtitles-adjust-advance');
     advButton.addEventListener('click', function() {
       delayMs -= 100;
       console.log(delayMs + 'ms delay');
     });
+    var resetButton = document.querySelector('#chrome-subtitles-adjust-reset');
     resetButton.addEventListener('click', function() {
       delayMs = 0;
       console.log('no delay');
     });
+
+    var syncButton = document.querySelector('#chrome-subtitles-click-to-play');
     syncButton.addEventListener('click', function() {
       if (syncButton.className.indexOf('active') == -1) {
         syncButton.className += ' active';
@@ -169,6 +168,8 @@
         playerObject.removeEventListener('mouseup', togglePlayPause);
       }
     });
+
+    var wrapForm = document.querySelector('#chrome-subtitles-form');
     wrapForm.addEventListener('submit', function(e) {
       e.preventDefault();
       setSoughtTime();
@@ -329,7 +330,7 @@
     root.id = subsRootId;
 
     if (/^https?:\/\/www\.hulu\.jp/.test(url)) {
-      playerSelector = 'embed#player';
+      playerSelector = '#player';
       containerSelector = '#player-container';
     } else {
       playerSelector = '#player-object';
@@ -347,6 +348,7 @@
   // 
   // do
   // 
+
   removeControllers();
   createUi();
   initialize();
