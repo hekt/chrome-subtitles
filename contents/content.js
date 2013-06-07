@@ -290,7 +290,6 @@
       runningTime = 0;
       eventIndex = 0;
     }
-    removeAll();
     if (timeTable) {
       status = 'playing';
       toggleActive();

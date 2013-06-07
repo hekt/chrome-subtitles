@@ -26,9 +26,13 @@ Play / Pause
 
 Toggle play/pause of subtitles when click the embed video if this enabled.
 
-### + / = / -
+### + / -
 
 Incerease / decrease delay by 100 ms.
+
+### =
+
+Reset delay
 
 ### Seek
 
