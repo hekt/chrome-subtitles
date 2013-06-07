@@ -1,5 +1,6 @@
 (function() {
   var parser = new SubtitleParser();
+  var domain = location.href.match(/(?:http|file)s?:\/\/([a-z.]+)/)[1];
   var subsRootId = 'chrome-subtitles-root';
   var subsWrapClass = 'chrome-subtitles-wrap';
   var subsTextClass = 'chrome-subtitles-text';
@@ -93,11 +94,13 @@
     ctrlPlay.value = '▶';
     ctrlForm.appendChild(ctrlPlay);
 
-    var ctrlClickToPlay = document.createElement('input');
-    ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
-    ctrlClickToPlay.type = 'button';
-    ctrlClickToPlay.value = '...';
-    ctrlForm.appendChild(ctrlClickToPlay);
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      var ctrlClickToPlay = document.createElement('input');
+      ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
+      ctrlClickToPlay.type = 'button';
+      ctrlClickToPlay.value = '...';
+      ctrlForm.appendChild(ctrlClickToPlay);
+    }
 
     var ctrlPlayTime = document.createElement('input');
     ctrlPlayTime.id = 'chrome-subtitles-play-time';
@@ -138,8 +141,10 @@
     playButton.addEventListener('click', function() {
       if (status == 'ready' || status == 'pause') {
         play();
+        playVideo();
       } else {
         pause();
+        pauseVideo();
       }
     });
     var delayButton = document.querySelector('#chrome-subtitles-adjust-delay');
@@ -158,27 +163,34 @@
       console.log('no delay');
     });
 
-    var syncButton = document.querySelector('#chrome-subtitles-click-to-play');
-    syncButton.addEventListener('click', function() {
-      if (syncButton.className.indexOf('active') == -1) {
-        syncButton.className += ' active';
-        playerObject.addEventListener('mouseup', togglePlayPause);
-      } else {
-        syncButton.className = syncButton.className.replace(/\s?active/, '');
-        playerObject.removeEventListener('mouseup', togglePlayPause);
-      }
-    });
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      var syncButton = 
+            document.querySelector('#chrome-subtitles-click-to-play');
+      syncButton.addEventListener('click', function() {
+        if (syncButton.className.indexOf('active') == -1) {
+          syncButton.className += ' active';
+          playerObject.addEventListener('mouseup', togglePlayPause);
+        } else {
+          syncButton.className = syncButton.className.replace(/\s?active/, '');
+          playerObject.removeEventListener('mouseup', togglePlayPause);
+        }
+      });
+    }
 
     var wrapForm = document.querySelector('#chrome-subtitles-form');
     wrapForm.addEventListener('submit', function(e) {
+      var elem, t, sec;
       e.preventDefault();
-      setSoughtTime();
+      t = document.querySelector('#chrome-subtitles-play-time')
+        .value.split(':').map(parseFloat);
+      sec = t[0] * 60 + t[1];
+      
+      setSoughtTime(sec * 1000);
+      if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') huluSeek(sec);
     });
   }
-  function setSoughtTime() {
-    var timeElem = document.querySelector('#chrome-subtitles-play-time');
-    var times = timeElem.value.split(':');
-    runningTime = times[0] * 60 * 1000 + times[1] * 1000;
+  function setSoughtTime(ms) {
+    runningTime = ms;
     status = 'pause';
     console.log('set ' + runningTime + ' ms');
     for (var i = 0; i < timeTableLength; i++) {
@@ -186,6 +198,14 @@
         eventIndex = i == 0 ? i : i - 1;
         break;
       }
+    }
+  }
+  function toggleYoutubePlay() {
+    var state = playerObject.getPlayerState();
+    if (state == 1) {
+      playerObject.pauseVideo();
+    } else {
+      playerObject.playVideo();
     }
   }
 
@@ -318,6 +338,34 @@
   }
 
   // 
+  // video control
+  // 
+  function playVideo() {
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      huluPlay();
+    } else if (domain == 'www.youtube.com') {
+      youtubePlay();
+    }
+  }
+  function pauseVideo() {
+    if (domain == 'www.youtube.com') {
+      youtubePause();
+    }
+  }
+  function huluPlay() {
+    playerObject.resumeVideo();
+  }
+  function huluSeek(sec) {
+    playerObject.seekVideo(sec);
+  }
+  function youtubePlay() {
+    playerObject.playVideo();
+  }
+  function youtubePause() {
+    playerObject.pauseVideo();
+  }
+
+  // 
   // initialize
   // 
   function initialize() {
@@ -328,9 +376,12 @@
     root = document.createElement('div');
     root.id = subsRootId;
 
-    if (/^https?:\/\/www\.hulu\.jp/.test(url)) {
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
       playerSelector = '#player';
       containerSelector = '#player-container';
+    } else if (domain == 'www.youtube.com') {
+      playerSelector = '#movie_player';
+      containerSelector = '#player-api';
     } else {
       playerSelector = '#player-object';
       containerSelector = '#player-container';
@@ -343,7 +394,7 @@
     playerContainer.appendChild(root);
     subsRootElem = document.querySelector('#' + subsRootId);
   }
-
+  
   // 
   // do
   // 
@@ -351,4 +402,6 @@
   removeControllers();
   createUi();
   initialize();
+  if (timerId) clearInterval(timerId);
+  removeAll();
 })();
