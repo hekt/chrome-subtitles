@@ -185,8 +185,13 @@
         .value.split(':').map(parseFloat);
       sec = t[0] * 60 + t[1];
       
-      setSoughtTime(sec * 1000);
-      if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') huluSeek(sec);
+      if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') { 
+        huluSeek(sec);
+        setSoughtTime(sec * 1000);
+      } else if (domain == 'www.youtube.com') {
+        youtubeSeek(sec);
+        setSoughtTime(playerObject.getCurrentTime() * 1000);
+      }
     });
   }
   function setSoughtTime(ms) {
@@ -287,21 +292,21 @@
     time = Math.floor((runningTime - delayMs) / 100) * 100;
     target = timeTable[eventIndex];
 
-    while(target && time > target.time) {
-      removeText(target);
-      console.info('id: ' + target.id + ' skipped');
+    while(target && time >= target.time) {
+      if (time > target.time) {
+        target.event == 'start' ?
+          console.info('id: ' + target.id + ' skipped') :
+          removeText(target);
+      } else if (time == target.time) {
+        target.event == 'start' ? addText(target) : removeText(target);
+      }
       eventIndex += 1;
       target = timeTable[eventIndex];
     }
-    while(target && time == target.time) {
-      target.event == 'start' ? addText(target) : removeText(target);
-      eventIndex += 1;
-      target = timeTable[eventIndex];
-    }
-    if (eventIndex >= timeTableLength) {
+    if (!target) {
       pause();
       status = 'ready';
-      console.log('end');
+      eventIndex = 0;
     }
   }
   function play() {
@@ -363,6 +368,9 @@
   }
   function youtubePause() {
     playerObject.pauseVideo();
+  }
+  function youtubeSeek(sec) {
+    playerObject.seekTo(sec);
   }
 
   // 
