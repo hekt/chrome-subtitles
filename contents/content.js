@@ -42,12 +42,12 @@
     addEventListenersForUi();
   }
   function removeUi() {
-    var uiObj = document.querySelector("#chrome-subtitles-ui-wrap");
+    var uiObj = document.getElementById("chrome-subtitles-ui-wrap");
     if (uiObj) document.body.removeChild(uiObj);
   }
   function addEventListenersForUi() {
     var fileReciever = 
-          document.querySelector('#chrome-subtitles-ui-file-selector');
+          document.getElementById('chrome-subtitles-ui-file-selector');
     fileReciever.addEventListener('change', function() {
       var file = fileReciever.files[0];
       var r = new FileReader();
@@ -66,8 +66,6 @@
         timeTable = result.events;
         timeTableLength = timeTable.length;
         if (result.styles) appendStyles(result.styles);
-        console.log(result.events);
-        console.log(result.styles);
       }, true);
       r.readAsText(file, 'UTF-8');
 
@@ -136,14 +134,14 @@
     addEventListenersForControllers();
   }
   function removeControllers() {
-    var ctrlObj = document.querySelector('#chrome-subtitles-controllers');
+    var ctrlObj = document.getElementById('chrome-subtitles-controllers');
     if (ctrlObj) document.body.removeChild(ctrlObj);
   }
   function addEventListenersForControllers() {
     // global
-    playTimeBox = document.querySelector('#chrome-subtitles-play-time');
+    playTimeBox = document.getElementById('chrome-subtitles-play-time');
 
-    var playButton = document.querySelector('#chrome-subtitles-play');
+    var playButton = document.getElementById('chrome-subtitles-play');
     playButton.addEventListener('click', function() {
       if (status == 'ready' || status == 'pause') {
         play();
@@ -153,17 +151,17 @@
         pauseVideo();
       }
     });
-    var delayButton = document.querySelector('#chrome-subtitles-adjust-delay');
+    var delayButton = document.getElementById('chrome-subtitles-adjust-delay');
     delayButton.addEventListener('click', function() {
       delayMs += 100;
       console.log(delayMs + 'ms delay');
     });
-    var advButton = document.querySelector('#chrome-subtitles-adjust-advance');
+    var advButton = document.getElementById('chrome-subtitles-adjust-advance');
     advButton.addEventListener('click', function() {
       delayMs -= 100;
       console.log(delayMs + 'ms delay');
     });
-    var resetButton = document.querySelector('#chrome-subtitles-adjust-reset');
+    var resetButton = document.getElementById('chrome-subtitles-adjust-reset');
     resetButton.addEventListener('click', function() {
       delayMs = 0;
       console.log('no delay');
@@ -171,7 +169,7 @@
 
     if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
       var syncButton = 
-            document.querySelector('#chrome-subtitles-click-to-play');
+            document.getElementById('chrome-subtitles-click-to-play');
       syncButton.addEventListener('click', function() {
         if (syncButton.className.indexOf('active') == -1) {
           syncButton.className += ' active';
@@ -185,11 +183,11 @@
       });
     }
 
-    var wrapForm = document.querySelector('#chrome-subtitles-form');
+    var wrapForm = document.getElementById('chrome-subtitles-form');
     wrapForm.addEventListener('submit', function(e) {
       var elem, t, sec;
       e.preventDefault();
-      t = document.querySelector('#chrome-subtitles-play-time')
+      t = document.getElementById('chrome-subtitles-play-time')
         .value.split(':').map(parseFloat);
       sec = t[0] * 60 + t[1];
       
@@ -227,7 +225,7 @@
   // 
   function appendStyles (styleObj) {
     var styleElem = document.createElement('style');
-    document.querySelector('head').appendChild(styleElem);
+    document.head.appendChild(styleElem);
     var css = styleElem.sheet || styleElem.styleSheet;
 
     var l, d, s;
@@ -246,7 +244,7 @@
     }
   }
   function toggleActive() {
-    var elem = document.querySelector('#chrome-subtitles-play');
+    var elem = document.getElementById('chrome-subtitles-play');
     if (elem.className.indexOf('active') == -1) {
       elem.className += ' active';
       elem.value = '❙❙';
@@ -389,28 +387,28 @@
   function initialize() {
     var url = location.href;
     var root;
-    var playerSelector, containerSelector;
+    var playerID, containerID;
 
     root = document.createElement('div');
     root.id = subsRootId;
 
     if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      playerSelector = '#player';
-      containerSelector = '#player-container';
+      playerID = 'player';
+      containerID = 'player-container';
     } else if (domain == 'www.youtube.com') {
-      playerSelector = '#movie_player';
-      containerSelector = '#player-api';
+      playerID = 'movie_player';
+      containerID = 'player-api';
     } else {
-      playerSelector = '#player-object';
-      containerSelector = '#player-container';
+      playerID = 'player-object';
+      containerID = 'player-container';
     }
 
-    playerObject = document.querySelector(playerSelector);
+    playerObject = document.getElementById(playerID);
     playerObject.setAttribute('wmode', 'transparent');
-    playerContainer = document.querySelector(containerSelector);
+    playerContainer = document.getElementById(containerID);
     playerContainer.style.position = 'relative';
     playerContainer.appendChild(root);
-    subsRootElem = document.querySelector('#' + subsRootId);
+    subsRootElem = document.getElementById(subsRootId);
   }
   
   // 
