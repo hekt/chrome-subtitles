@@ -3,7 +3,7 @@
     if (inf.status === 'complete') {
       var rs = [
         /^file:\/\//,
-        /^https?:\/\/www\.youtube\.com/,
+        /^https?:\/\/www\.youtube\.com\/watch/,
         /^https?:\/\/www\.hulu\.(jp|com)\/watch\//
       ];
       for (var i = 0; i < rs.length; i++) {
