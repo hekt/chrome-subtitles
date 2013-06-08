@@ -92,6 +92,7 @@
     ctrlPlay.id = 'chrome-subtitles-play';
     ctrlPlay.type = 'button';
     ctrlPlay.value = '▶';
+    ctrlPlay.title = 'Play';
     ctrlForm.appendChild(ctrlPlay);
 
     if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
@@ -99,6 +100,7 @@
       ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
       ctrlClickToPlay.type = 'button';
       ctrlClickToPlay.value = '...';
+      ctrlClickToPlay.title = 'Enable Click To Play';
       ctrlForm.appendChild(ctrlClickToPlay);
     }
 
@@ -106,22 +108,26 @@
     ctrlPlayTime.id = 'chrome-subtitles-play-time';
     ctrlPlayTime.type = 'text';
     ctrlPlayTime.value = '00:00';
+    ctrlPlayTime.title = 'Current Time';
     ctrlForm.appendChild(ctrlPlayTime);
 
     var ctrlAdvance = document.createElement('input');
     ctrlAdvance.id = 'chrome-subtitles-adjust-advance';
     ctrlAdvance.type = 'button';
     ctrlAdvance.value = '-';
+    ctrlAdvance.title = 'Delay -100 ms';
     ctrlForm.appendChild(ctrlAdvance);
     var ctrlReset = document.createElement('input');
     ctrlReset.id = 'chrome-subtitles-adjust-reset';
     ctrlReset.type = 'button';
     ctrlReset.value = '=';
+    ctrlReset.title = 'Reset Delay';
     ctrlForm.appendChild(ctrlReset);
     var ctrlDelay = document.createElement('input');
     ctrlDelay.id = 'chrome-subtitles-adjust-delay';
     ctrlDelay.type = 'button';
     ctrlDelay.value = '+';
+    ctrlDelay.title = 'Delay + 100 ms';
     ctrlForm.appendChild(ctrlDelay);
 
     ctrlWrap.appendChild(ctrlForm);
@@ -169,9 +175,11 @@
       syncButton.addEventListener('click', function() {
         if (syncButton.className.indexOf('active') == -1) {
           syncButton.className += ' active';
+          syncButton.title = 'Disable Click to Play';
           playerObject.addEventListener('mouseup', togglePlayPause);
         } else {
           syncButton.className = syncButton.className.replace(/\s?active/, '');
+          syncButton.title = 'Enable Click to Play';
           playerObject.removeEventListener('mouseup', togglePlayPause);
         }
       });
@@ -242,9 +250,11 @@
     if (elem.className.indexOf('active') == -1) {
       elem.className += ' active';
       elem.value = '❙❙';
+      elem.title = 'Pause';
     } else {
       elem.className = elem.className.replace(/\s?active/, '');
       elem.value = '▶';
+      elem.title = 'Play';
     }
   }
   function updateTimeBox() {
