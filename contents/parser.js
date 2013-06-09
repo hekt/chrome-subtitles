@@ -4,7 +4,7 @@ var SubtitleParser = function() {
   }
 
   function sortByTime(a, b) {
-    return (a.time > b.time) ? 1 : -1;
+    return (a.start > b.start) ? 1 : -1;
   }
 
   function stringToMilliseconds(str) {
@@ -14,10 +14,6 @@ var SubtitleParser = function() {
     m = parseFloat(times[1]) * 60 * 1000;
     s = Math.round(parseFloat(times[2]) * 10) * 100;
     return Math.floor(h + m + s);
-  }
-
-  function toWebHex(str) {
-    return '#' + str.substring(4);
   }
 
   function toRGBA(str) {
@@ -55,25 +51,22 @@ var SubtitleParser = function() {
       return e != '';
     });
 
-    var line, values, times, id;
+    var line, values, times, texts, id, className;
     var events = [];
     for (var i = 1; i < lines.length; i++) {
       line = lines[i].replace(/Dialogue:\s*/i, '');
       values = line.split(',').map(strip);
       times = values.slice(1,3).map(stringToMilliseconds);
+      texts = values[9].split('\\N').filter(function(e) {
+        return e != ''; }).map(removeAssInlineCommands);
       id = 'subtitle-' + values[1].replace(/[:\.]/g, '-');
+      className = values[3].toLowerCase();
       events.push({
-        event: 'start',
-        time: times[0],
+        start: times[0], 
+        end: times[1],
+        texts: texts,
         id: id,
-        className: values[3].toLowerCase(),
-        texts: values[9].split('\\N').filter(function (e) {
-          return e != ''; }).map(removeAssInlineCommands)
-      });
-      events.push({
-        event: 'end',
-        time: times[1],
-        id: id
+        className: className
       });
     }
     
@@ -93,14 +86,9 @@ var SubtitleParser = function() {
       });
       id = 'subtitle-' + timeStrs[0].replace(/[:,]/g, '-');
       events.push({
-        event: 'start',
-        time: times[0],
-        id: id,
-        texts: texts
-      });
-      events.push({
-        event: 'end',
-        time: times[1],
+        start: times[0],
+        end: times[1],
+        texts: texts,
         id: id
       });
     }
@@ -112,76 +100,22 @@ var SubtitleParser = function() {
     function getValues(str) {
       return str.replace(/^[a-z]+\s*:\s*/i, '').split(',').map(strip);
     }
-    function getObjs(str) {
-      var lines = str.split(/\r\n|\r|\n/g).filter(function (e) {
-        return e != '';
-      });
-      var keys = getValues(lines[0]);
-      
-      var styles = [];
-      var values, d;
-      for (var i = 1; i < lines.length; i++) {
-        d = {};
-        values = getValues(lines[i]);
-        for (var j = 0; j < keys.length; j++) {
-          d[keys[j]] = values[j];
-        }
-        styles.push(d);
+    var lines = blockContent.split(/\r\n|\r|\n/g).filter(function (e) {
+      return e != '';
+    });
+    var keys = getValues(lines[0]);
+    
+    var styles = [];
+    var values, d;
+    for (var i = 1; i < lines.length; i++) {
+      d = {};
+      values = getValues(lines[i]);
+      for (var j = 0; j < keys.length; j++) {
+        d[keys[j]] = values[j];
       }
-      return styles;
+      styles.push(d);
     }
-
-    var styleObjs = getObjs(blockContent);
-    var className, classBody, deco, decos, outline, o, style;
-    var outlineColourName = 'OutlineColour' in styleObjs[0] ?
-          'OutlineColour' : 'TertiaryColour';
-
-    var cssObj = {};
-    for (var i = 0; i < styleObjs.length; i++) {
-      o = styleObjs[i];
-      
-      className = o['Name'].toLowerCase();
-
-      decos = [];
-      if (o['Underline'] == '1') decos.push('underline');
-      if (o['StrikeOut'] == '1') decos.push('line-through');
-      deco = decos == [] ? 'none' : decos.join(' ');
-
-      outline = ['1px 1px', '1px -1px', '-1px 1px', '-1px -1px']
-        .map(function (e) {
-          return e + ' ' + toRGBA(o[outlineColourName]);
-        }).join(', ');
-      
-      classBody = {
-        'font-family': o['Fontname'],
-        'color': toRGBA(o['PrimaryColour']),
-        'text-shadow': outline,
-        'background-color': toRGBA(o['BackColour']),
-        'font-weight': o['Bold'] == '1' ? 'bold' : 'normal',
-        'font-style': o['Italic'] == '1' ? 'italic' : 'normal',
-        'text-decoration': deco,
-        'text-spacing': o['Spacing'] + ' px'
-      };
-
-      var alg = o['Alignment'];
-      if (alg % 3 == 0) {
-        classBody['text-align'] = 'right';
-      } else if (alg % 3 == 1) {
-        classBody['text-align'] = 'left';
-      } else {
-        classBody['text-align'] = 'center';
-      }
-      if (alg / 3 > 2) {
-        classBody['top'] = '5%';
-      } else if (alg / 3 > 1) {
-        classBody['top'] = '50%';
-      } else {
-        classBody['bottom'] = '5%';
-      }
-
-      cssObj[className] = classBody;
-    }
-    return cssObj;
+    return styles;
   }
 
   this.assParser = function(fileContent) {

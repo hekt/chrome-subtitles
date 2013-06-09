@@ -1,13 +1,10 @@
 (function() {
-  var parser = new SubtitleParser();
-  var domain = location.href.match(/(?:http|file)s?:\/\/([a-z.]+)/)[1];
   var subsRootId = 'chrome-subtitles-root';
   var subsWrapClass = 'chrome-subtitles-wrap';
   var subsTextClass = 'chrome-subtitles-text';
   var subsLineClass = 'chrome-subtitles-line';
+  var domain = location.href.match(/(?:http|file)s?:\/\/([a-z.]+)/)[1];
 
-  // global variables
-  var subsRootElem;
   var timerId;
   var timeTable;
   var timeTableLength;
@@ -15,17 +12,210 @@
   var previousTime;
   var playerObject;
   var playerContainer;
-  var playTimeBox;
-  var eventIndex = 0;
-  var runningTime = 0;
-  var delayMs = 0;
-  var status = 'ready';
+  var currentTimeBox;
+
+  var eventIndex;
+  var runningTime;
+  var delayMs;
+  var status;
+
+
+  function main() {
+    Control.initialize();
+
+    View.removeControllers();
+    View.createUi();
+
+    Control.addEventListenersForUi();
+    
+    if (timerId) clearInterval(timerId);
+    View.removeAllSubs();
+  }
+
+
+  // 
+  // Models
+  // 
+  var Model = {};
+
+  Model.Subtitle = function(start, end ,texts, id, opt_className) {
+    this.start = start;
+    this.end = end;
+    this.texts = texts;
+    this.id = id;
+    if (opt_className) this.className = opt_className;
+  };
+  Model.Subtitle.prototype = {
+    rootId: subsRootId,
+    wrapClassName: subsWrapClass,
+    textClassName: subsTextClass,
+    lineClassName: subsLineClass,
+    rootElement: document.body,
+    action: function() {
+      var wrap, text, lines;
+      wrap = document.createElement('div');
+      wrap.className = this.wrapClassName;
+      wrap.id = this.id;
+      if (this.className) wrap.className += ' ' + this.className;
+      text = document.createElement('div');
+      text.className = this.textClassName;
+      lines = '<span class="' + this.lineClassName + '">' +
+        this.texts.join('</span><br><span class="' + this.lineClassName + 
+                        '">') +'</span>';
+      text.innerHTML = lines;
+      wrap.appendChild(text);
+      this.rootElement.appendChild(wrap);
+      setTimeout(function(p, c) { if (c) p.removeChild(c); },
+                 this.end - this.start,
+                 this.rootElement, wrap);
+    }
+  };
+
+  Model.setRootElementToSubtitle = function(elem) {
+    Model.Subtitle.prototype.rootElement = elem;
+  };
+
+  Model.assParser = function(content) {
+    return SubtitleParser().assParser(content);
+  };
+
+  Model.srtParser = function(content) {
+    return SubtitleParser().srtParser(content);
+  };
+
+  Model.setTimeTable = function(events) {
+    var e;
+    var table = [];
+    for (var i = 0; i < events.length; i++) {
+      e = events[i];
+      table.push(new Model.Subtitle(e.start, e.end, e.texts, 
+                                    e.id, e.className));
+    }
+    timeTable = table;
+    timeTableLength = timeTable.length;
+  };
+
+  Model.v4pToCss = function(styles) {
+    var decorations, outline, align, posTop, posBottom;
+    var s, wrapSelector, wrapStyles, lineSelector, lineStyles;
+    var css = {};
+
+    for (var i=0; i < styles.length; i++) {
+      s = styles[i];
+      
+      // text-decorations: Underline, StrikeOut
+      decorations = [];
+      if (s['Underline'] == '1') decorations.push('underline');
+      if (s['StrikeOut'] == '1') decorations.push('line-through');
+      decorations = decorations == [] ? 'none' : decorations.join(' ');
+
+      // text-shadow: Outline
+      outline = ['1px 1px', '1px -1px', '-1px 1px', '-1px -1px']
+        .map(function(e) {
+          return e + ' ' + toRGBA(s['OutlineColour']);
+        }).join(', ');
+
+      // text-align, top/bottom: Alignment
+      var alignMod = s['Alignment'] % 3;
+      if (alignMod == 0) {
+        align = 'right';
+      } else if (alignMod == 1) {
+        align = 'left';
+      } else {
+        align = 'center';
+      }
+      var alignDiv = s['Alignment'] / 3;
+      posTop = 'auto';
+      posBottom = 'auto';
+      if (alignDiv > 2) {
+        posTop = '5%';
+      } else if (alignDiv > 1) {
+        posTop = '50%';
+      } else {
+        posBottom = '5%';
+      }
+
+      wrapSelector = '.' + s['Name'];
+      wrapStyles = {
+        'color': toRGBA(s['PrimaryColour']),
+        'font-family': s['Fontname'],
+        'font-weight': s['Bold'] == '1' ? 'bold' : 'normal',
+        'font-style': s['Italic'] == '1' ? 'italic' : 'normal',
+        'text-align': align,
+        'text-decoration': decorations,
+        'text-shadow': outline,
+        'text-spacing': s['Spacing'] + ' px',
+        'top': posTop,
+        'bottom': posBottom
+      };
+
+      lineSelector = wrapSelector + ' ' + subsLineClass;
+      lineStyles = {
+        'background-color': toRGBA(s['BackColour'])
+      };
+
+      css[wrapSelector] = wrapStyles;
+      css[lineSelector] = lineStyles;
+    }
+
+    return css;
+  };
+
+  Model.delay = function(ms) {
+    delayMs += ms;
+  };
+  
+  Model.resetDelay = function() {
+    delayMs = 0;
+  };
+
+  Model.updateRunningTime = function(ms) {
+    runningTime = ms;
+  };
+
+  Model.updateEventIndex = function() {
+    for (var i = 0; i < timeTableLength; i++) {
+      if (runningTime == timeTable[i].start) {
+        eventIndex = i;
+      } else if (runningTime < timeTable[i].start) {
+        eventIndex = i == 0 ? i : i - 1;
+      }
+    }
+  };
+
+  Model.initRunningTime = function() {
+    runningTime = 0;
+  };
+
+  Model.initEventIndex = function() {
+    eventIndex = 0;
+  };
+
+  Model.updateStatus = function(st) {
+    status = st;
+  };
 
   //
-  // open file ui
+  // Views
   //
-  function createUi() {
-    removeUi();
+  var View = {};
+
+  View.createSubsRoot = function() {
+    var root = document.createElement('div');
+    root.id = subsRootId;
+    playerContainer.appendChild(root);
+  };
+
+  View.modPlayerObject = function() {
+    playerObject.setAttribute('wmode', 'transparent');
+  };
+
+  View.modPlayerContainer = function() {
+    playerContainer.style.position = 'relative';
+  };
+
+  View.createUi = function() {
+    View.removeUi();
 
     var uiWrap = document.createElement('div');
     uiWrap.id = 'chrome-subtitles-ui-wrap';
@@ -38,47 +228,15 @@
     uiBody.appendChild(uiInputFile);
     uiWrap.appendChild(uiBody);
     document.body.appendChild(uiWrap);
-
-    addEventListenersForUi();
-  }
-  function removeUi() {
+  };
+  
+  View.removeUi = function() {
     var uiObj = document.getElementById("chrome-subtitles-ui-wrap");
     if (uiObj) document.body.removeChild(uiObj);
-  }
-  function addEventListenersForUi() {
-    var fileReciever = 
-          document.getElementById('chrome-subtitles-ui-file-selector');
-    fileReciever.addEventListener('change', function() {
-      var file = fileReciever.files[0];
-      var r = new FileReader();
-      var result;
-      r.addEventListener('load', function(e) {
-        if (file.name.indexOf('.ass') != -1) {
-          console.log('ass');
-          result = parser.assParser(r.result);
-        } else if (file.name.indexOf('.srt') != -1) {
-          console.log('srt');
-          result = parser.srtParser(r.result);
-        } else {
-          console.error('invalid subtitle file');
-          result= {};
-        }
-        timeTable = result.events;
-        timeTableLength = timeTable.length;
-        if (result.styles) appendStyles(result.styles);
-      }, true);
-      r.readAsText(file, 'UTF-8');
+  };
 
-      removeUi();
-      createControllers();
-    });
-  }
-
-  //
-  // playback controllers
-  //
-  function createControllers() {
-    removeControllers();
+  View.createControllers = function() {
+    View.removeControllers();
 
     var ctrlWrap = document.createElement('div');
     ctrlWrap.id = 'chrome-subtitles-controllers';
@@ -130,120 +288,44 @@
 
     ctrlWrap.appendChild(ctrlForm);
     document.body.appendChild(ctrlWrap);
+  };
 
-    addEventListenersForControllers();
-  }
-  function removeControllers() {
+  View.removeControllers = function() {
     var ctrlObj = document.getElementById('chrome-subtitles-controllers');
     if (ctrlObj) document.body.removeChild(ctrlObj);
-  }
-  function addEventListenersForControllers() {
-    // global
-    playTimeBox = document.getElementById('chrome-subtitles-play-time');
+  };
 
-    var playButton = document.getElementById('chrome-subtitles-play');
-    playButton.addEventListener('click', function() {
-      if (status == 'ready' || status == 'pause') {
-        play();
-        playVideo();
-      } else {
-        pause();
-        pauseVideo();
-      }
-    });
-    var delayButton = document.getElementById('chrome-subtitles-adjust-delay');
-    delayButton.addEventListener('click', function() {
-      delayMs += 100;
-      console.log(delayMs + 'ms delay');
-    });
-    var advButton = document.getElementById('chrome-subtitles-adjust-advance');
-    advButton.addEventListener('click', function() {
-      delayMs -= 100;
-      console.log(delayMs + 'ms delay');
-    });
-    var resetButton = document.getElementById('chrome-subtitles-adjust-reset');
-    resetButton.addEventListener('click', function() {
-      delayMs = 0;
-      console.log('no delay');
-    });
-
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      var syncButton = 
-            document.getElementById('chrome-subtitles-click-to-play');
-      syncButton.addEventListener('click', function() {
-        if (syncButton.className.indexOf('active') == -1) {
-          syncButton.className += ' active';
-          syncButton.title = 'Disable Click to Play';
-          playerObject.addEventListener('mouseup', togglePlayPause);
-        } else {
-          syncButton.className = syncButton.className.replace(/\s?active/, '');
-          syncButton.title = 'Enable Click to Play';
-          playerObject.removeEventListener('mouseup', togglePlayPause);
-        }
-      });
-    }
-
-    var wrapForm = document.getElementById('chrome-subtitles-form');
-    wrapForm.addEventListener('submit', function(e) {
-      var elem, t, sec;
-      e.preventDefault();
-      t = document.getElementById('chrome-subtitles-play-time')
-        .value.split(':').map(parseFloat);
-      sec = t[0] * 60 + t[1];
-      
-      if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') { 
-        huluSeek(sec);
-        setSoughtTime(sec * 1000);
-      } else if (domain == 'www.youtube.com') {
-        youtubeSeek(sec);
-        setSoughtTime(playerObject.getCurrentTime() * 1000);
-      }
-    });
-  }
-  function setSoughtTime(ms) {
-    runningTime = ms;
-    status = 'pause';
-    console.log('set ' + runningTime + ' ms');
-    for (var i = 0; i < timeTableLength; i++) {
-      if (runningTime <= timeTable[i].time) {
-        eventIndex = i == 0 ? i : i - 1;
-        break;
-      }
-    }
-  }
-  function toggleYoutubePlay() {
-    var state = playerObject.getPlayerState();
-    if (state == 1) {
-      playerObject.pauseVideo();
+  View.toggleCtpActive = function() {
+    var elem = document.getElemenyById('chrome-subtitles-click-to-play');
+    if(elem.className.indexOf('active') == -1) {
+      elem.className += 'active';
+      elem.title = 'Disable Click to Play';
+      Control.addCtpListener();
     } else {
-      playerObject.playVideo();
+      elem.className = elem.classNAme.replace(/\s?active/, '');
+      elem.title = 'Enable Click to Play';
+      Control.removeCtpListener();
     }
-  }
+  };
 
-  // 
-  // dom
-  // 
-  function appendStyles (styleObj) {
+  View.appendStyles = function(styles) {
     var styleElem = document.createElement('style');
     document.head.appendChild(styleElem);
     var css = styleElem.sheet || styleElem.styleSheet;
 
     var l, d, s;
-    for (var className in styleObj) {
+    for (var selector in styles) {
       l = [];
-      d = styleObj[className];
+      d = styles[selector];
       for (var k in d) {
-        if (k == 'background-color') continue;
         l.push(k + ':' + d[k] + ';');
       }
-      s = '.' + className + ' {' + l.join('') + '}';
+      s = selector + ' {' + l.join('') + '}';
       css.insertRule(s, css.cssRules.length);
-      s = '.' + className + ' .' + subsLineClass + ' {background-color: ' + 
-        d['background-color'] + ';}';
-      css.insertRule(s, css.cssRules.length);
-    }
-  }
-  function toggleActive() {
+    }    
+  };
+
+  View.togglePausePlayButton = function() {
     var elem = document.getElementById('chrome-subtitles-play');
     if (elem.className.indexOf('active') == -1) {
       elem.className += ' active';
@@ -253,171 +335,301 @@
       elem.className = elem.className.replace(/\s?active/, '');
       elem.value = '▶';
       elem.title = 'Play';
-    }
-  }
-  function updateTimeBox() {
+    }    
+  };
+
+  View.updateTimeBox = function() {
     var m, s;
     m = Math.floor(runningTime / 1000 / 60);
     m = m < 10 ? '0' + m : m;
     s = Math.floor(runningTime / 1000) % 60;
     s = s < 10 ? '0' + s : s;
-    playTimeBox.value = m + ':' + s;
-  }
-  function addText(obj) {
-    var wrap, text, lines;
-    wrap = document.createElement('div');
-    wrap.className = subsWrapClass;
-    wrap.id = obj.id;
-    if (wrap.className) wrap.className += ' ' + obj.className;
-    text = document.createElement('div');
-    text.className = subsTextClass;
-    lines = '<span class="' + subsLineClass + '">' + 
-      obj.texts.join('</span><br><span class="' + subsLineClass + '">') + 
-      '</span>';
-    text.innerHTML = lines;
-    wrap.appendChild(text);
-    subsRootElem.appendChild(wrap);
-  }
-  function removeText(obj) {
-    var elem = document.getElementById(obj.id);
-    if (elem) subsRootElem.removeChild(elem);
-  }
-  function removeAll() {
-    if (subsRootElem) subsRootElem.innerHTML = null;
-  }
+    currentTimeBox.value = m + ':' + s;
+  };
 
+  View.removeAllSubs = function() {
+    var elem = document.getElementById(subsRootId);
+    if (elem) elem.innerHTML = null;
+  };
+  
   // 
-  // playback control
+  // Controls
   // 
-  function mainLoop() {
+  var Control = {};
+
+  Control.initialize = function() {
+    Model.initRunningTime();
+    Model.initEventIndex();
+    Model.resetDelay();
+    Model.updateStatus('ready');
+
+    Control.setPlayerObject();
+    Control.setPlayerContainerObject();
+
+    View.createSubsRoot();
+    View.modPlayerObject();
+    View.modPlayerContainer();
+    
+    Model.setRootElementToSubtitle(document.getElementById(subsRootId));
+  };
+
+  Control.setPlayerObject = function() {
+    var playerId;
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      playerId = 'player';
+    } else if (domain == 'www.youtube.com') {
+      playerId = 'movie_player';
+    } else {
+      playerId = 'player-object';
+    }
+    playerObject = document.getElementById(playerId);
+  };
+
+  Control.setPlayerContainerObject = function() {
+    var containerId;
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      containerId = 'player-container';
+    } else if (domain == 'www.youtube.com') {
+      containerId = 'player-api';
+    } else {
+      containerId = 'player-container';
+    }
+    playerContainer = document.getElementById(containerId);
+  };
+
+  Control.addEventListenersForUi = function() {
+    var fileReciever = 
+          document.getElementById('chrome-subtitles-ui-file-selector');
+    fileReciever.addEventListener('change', function() {
+      var file = fileReciever.files[0];
+      var r = new FileReader();
+      var result;
+      r.addEventListener('load', function(e) {
+        if (file.name.indexOf('.ass') != -1) {
+          result = Model.assParser(r.result);
+        } else if (file.name.indexOf('.srt') != -1) {
+          result = Model.srtParser(r.result);
+        } else {
+          console.error('invalid subtitle file');
+          result= {};
+        }
+        Model.setTimeTable(result.events);
+        if (result.styles) {
+          var css = Model.v4pToCss(result.styles);
+          View.appendStyles(css);
+        }
+      }, true);
+      r.readAsText(file, 'UTF-8');
+
+      View.removeUi();
+      View.createControllers();
+      Control.addEventListenersForControllers();
+    });
+  };
+
+  Control.addEventListenersForControllers = function() {
+    // global
+    currentTimeBox = document.getElementById('chrome-subtitles-play-time');
+
+    var playButton = document.getElementById('chrome-subtitles-play');
+    playButton.addEventListener('click', function() {
+      if (status == 'ready' || status == 'pause') {
+        Control.play();
+        Control.playVideo();
+      } else {
+        Control.pause();
+        Control.pauseVideo();
+      }
+    });
+    var delayButton = document.getElementById('chrome-subtitles-adjust-delay');
+    delayButton.addEventListener('click', function() {
+      Model.delay(100);
+      console.log(delayMs + 'ms delay');
+    });
+    var advButton = document.getElementById('chrome-subtitles-adjust-advance');
+    advButton.addEventListener('click', function() {
+      Model.delay(-100);
+      console.log(delayMs + 'ms delay');
+    });
+    var resetButton = document.getElementById('chrome-subtitles-adjust-reset');
+    resetButton.addEventListener('click', function() {
+      Model.resetDelay();
+      console.log('no delay');
+    });
+
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      var syncButton = 
+            document.getElementById('chrome-subtitles-click-to-play');
+      syncButton.addEventListener('click', View.toggleCtpActive);
+    }
+
+    var wrapForm = document.getElementById('chrome-subtitles-form');
+    wrapForm.addEventListener('submit', function(e) {
+      var elem, t, sec, rtime;
+      e.preventDefault();
+      t = document.getElementById('chrome-subtitles-play-time')
+        .value.split(':').map(parseFloat);
+      sec = t[0] * 60 + t[1];
+      rtime = sec * 1000;
+
+      if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') { 
+        Control.hulu.seek(sec);
+      } else if (domain == 'www.youtube.com') {
+        Control.youtube.seek(sec);
+        rtime =  playerObject.getCurrentTime() * 1000;
+      }
+      Model.updateRunningTime(rtime);
+      Model.updateEventIndex();
+      Model.updateStatus('pause');
+    });
+  };
+
+  Control.addCtpListeners = function() {
+    playerObject.addEventListener('mouseup', View.togglePausePlay);
+  };
+
+  Control.removeCtpListeners = function() {
+    playerObject.removeEventListener('mouseup', View.togglePausePlay);
+  };
+
+  Control.mainLoop = function() {
     var time, target;
 
     currentTime = new Date();
     runningTime += currentTime - previousTime;
     previousTime = currentTime;
-    updateTimeBox();
+    View.updateTimeBox();
 
     time = Math.floor((runningTime - delayMs) / 100) * 100;
     target = timeTable[eventIndex];
 
-    while(target && time >= target.time) {
-      if (time > target.time) {
-        target.event == 'start' ?
-          console.info('id: ' + target.id + ' skipped') :
-          removeText(target);
-      } else if (time == target.time) {
-        target.event == 'start' ? addText(target) : removeText(target);
+    while(target && time >= target.start) {
+      if (time > target.start) {
+        console.info('id: ' + target.id + ' skipped');
+      } else if (time == target.start) {
+        target.action();
       }
       eventIndex += 1;
       target = timeTable[eventIndex];
     }
     if (!target) {
-      pause();
-      status = 'ready';
-      eventIndex = 0;
+      Control.pause();
+      Model.updateStatus('ready');
+      Model.initEventIndex();
     }
-  }
-  function play() {
-    removeAll();
+  };
+
+  Control.play = function() {
+    View.removeAllSubs();
+
     if (status == 'ready') {
-      runningTime = 0;
-      eventIndex = 0;
+      Model.initRunningTime();
+      Model.initEventIndex();
     }
-    if (timeTable) {
-      status = 'playing';
-      toggleActive();
-      console.log('play');
-      previousTime = new Date();
-      timerId = setInterval(mainLoop, 50);
-    } else {
-      console.warn('no subs');
-    }
-  }
-  function pause() {
-    if (status == 'playing') {
-      clearInterval(timerId);
-      status = 'pause';
-      console.log('pause');
-      console.log('running time(ms): ' + runningTime);
-      toggleActive();
-    }
-  }
-  function togglePlayPause() {
+    
+    if(!timeTable) return false;
+
+    Model.updateStatus('playing');
+    View.togglePausePlayButton();
+    console.log('play');
+    previousTime = new Date();
+    timerId = setInterval(Control.mainLoop, 50);
+    return true;
+  };
+
+  Control.pause = function() {
+    if (status != 'playing') return false;
+    
+    clearInterval(timerId);
+    Model.updateStatus('pause');
+    View.togglePausePlayButton();
+    console.log('pause');
+    console.log('running time(ms): ' + runningTime);
+    return true;
+  };
+
+  Control.togglePausePlay = function() {
     if (status == 'ready' || status == 'pause') {
-      play();
+      Control.play();
     } else {
-      pause();
+      Control.pause();
     }
-  }
+  };
 
-  // 
-  // video control
-  // 
-  function playVideo() {
+  Control.playVideo = function() {
     if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      huluPlay();
+      Control.hulu.play();
     } else if (domain == 'www.youtube.com') {
-      youtubePlay();
+      Control.youtube.play();
     }
-  }
-  function pauseVideo() {
+  };
+  
+  Control.pauseVideo = function() {
     if (domain == 'www.youtube.com') {
-      youtubePause();
+      Control.youtube.pause();
     }
-  }
-  function huluPlay() {
-    playerObject.resumeVideo();
-  }
-  function huluSeek(sec) {
-    playerObject.seekVideo(sec);
-  }
-  function youtubePlay() {
-    playerObject.playVideo();
-  }
-  function youtubePause() {
-    playerObject.pauseVideo();
-  }
-  function youtubeSeek(sec) {
-    playerObject.seekTo(sec);
-  }
+  };
 
-  // 
-  // initialize
-  // 
-  function initialize() {
-    var url = location.href;
-    var root;
-    var playerID, containerID;
+  // Youtube
+  Control.youtube = {};
 
-    root = document.createElement('div');
-    root.id = subsRootId;
-
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      playerID = 'player';
-      containerID = 'player-container';
-    } else if (domain == 'www.youtube.com') {
-      playerID = 'movie_player';
-      containerID = 'player-api';
+  Control.youtube.togglePausePlay = function() {
+    var state = playerObject.getPlayerState();
+    if (state == 1) {
+      playerObject.pauseVideo();
     } else {
-      playerID = 'player-object';
-      containerID = 'player-container';
-    }
+      playerObject.playVideo();
+    }    
+  };
+  
+  Control.youtube.play = function() {
+    playerObject.playVideo();
+  };
 
-    playerObject = document.getElementById(playerID);
-    playerObject.setAttribute('wmode', 'transparent');
-    playerContainer = document.getElementById(containerID);
-    playerContainer.style.position = 'relative';
-    playerContainer.appendChild(root);
-    subsRootElem = document.getElementById(subsRootId);
-  }
+  Control.youtube.pause = function() {
+    playerObject.pauseVideo();
+  };
+
+  Control.youtube.seek = function(sec) {
+    playerObject.seekTo(sec);
+  };
+
+  // hulu
+  Control.hulu = {};
+
+  Control.hulu.play = function() {
+    playerObject.resumeVideo();
+  };
+
+  Control.hulu.seek = function() {
+    playerObject.seekVideo(sec);
+  };
+  
   
   // 
-  // do
+  // common functions
   // 
+  function toRGBA(str) {
+    var r, g, b, a, colors;
+    if (str.length == 10) {
+      a = 1 - parseInt(str.substring(2,4), 16) / 256;
+      r = parseInt(str.substring(4,6), 16);
+      g = parseInt(str.substring(6,8), 16);
+      b = parseInt(str.substring(8,10), 16);
+      return 'rgba(' + [r,g,b,a].join(', ') + ')';
+    } else {
+      r = parseInt(str.substring(2,4), 16);
+      g = parseInt(str.substring(4,6), 16);
+      b = parseInt(str.substring(6,8), 16);
+      return 'rgb(' + [r,g,b].join(', ') + ')';
+    }
+  }
+  function strip(str) {
+    return str.replace(/^\s*(.*?)\s*$/, '$1');
+  }
 
-  removeControllers();
-  createUi();
-  initialize();
-  if (timerId) clearInterval(timerId);
-  removeAll();
+
+  main();
+
+
 })();
