@@ -24,6 +24,7 @@
     Control.initialize();
 
     View.removeControllers();
+    View.removeUi();
     View.createUi();
 
     Control.addEventListenersForUi();
@@ -75,12 +76,44 @@
     Model.Subtitle.prototype.rootElement = elem;
   };
 
+  Model.setPlayerObject = function() {
+    var playerId;
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      playerId = 'player';
+    } else if (domain == 'www.youtube.com') {
+      playerId = 'movie_player';
+    } else {
+      playerId = 'player-object';
+    }
+    playerObject = document.getElementById(playerId);
+  };
+
+  Model.setPlayerContainerObject = function() {
+    var containerId;
+    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+      containerId = 'player-container';
+    } else if (domain == 'www.youtube.com') {
+      containerId = 'player-api';
+    } else {
+      containerId = 'player-container';
+    }
+    playerContainer = document.getElementById(containerId);
+  };
+
   Model.assParser = function(content) {
     return SubtitleParser().assParser(content);
   };
 
   Model.srtParser = function(content) {
     return SubtitleParser().srtParser(content);
+  };
+
+  Model.setTimeTableFromFile = function(file) {
+    var fname = file.name;
+    var fcontent = Model.readFile(file);
+    var events;
+    if (/\.ass/.text(fname)) {
+    }
   };
 
   Model.setTimeTable = function(events) {
@@ -112,7 +145,7 @@
       // text-shadow: Outline
       outline = ['1px 1px', '1px -1px', '-1px 1px', '-1px -1px']
         .map(function(e) {
-          return e + ' ' + toRGBA(s['OutlineColour']);
+          return e + ' ' + Model.toRGBA(s['OutlineColour']);
         }).join(', ');
 
       // text-align, top/bottom: Alignment
@@ -137,7 +170,7 @@
 
       wrapSelector = '.' + s['Name'];
       wrapStyles = {
-        'color': toRGBA(s['PrimaryColour']),
+        'color': Model.toRGBA(s['PrimaryColour']),
         'font-family': s['Fontname'],
         'font-weight': s['Bold'] == '1' ? 'bold' : 'normal',
         'font-style': s['Italic'] == '1' ? 'italic' : 'normal',
@@ -151,7 +184,7 @@
 
       lineSelector = wrapSelector + ' ' + subsLineClass;
       lineStyles = {
-        'background-color': toRGBA(s['BackColour'])
+        'background-color': Model.toRGBA(s['BackColour'])
       };
 
       css[wrapSelector] = wrapStyles;
@@ -177,8 +210,10 @@
     for (var i = 0; i < timeTableLength; i++) {
       if (runningTime == timeTable[i].start) {
         eventIndex = i;
+        break;
       } else if (runningTime < timeTable[i].start) {
         eventIndex = i == 0 ? i : i - 1;
+        break;
       }
     }
   };
@@ -193,6 +228,22 @@
 
   Model.updateStatus = function(st) {
     status = st;
+  };
+
+  Model.toRGBA = function(str) {
+    var r, g, b, a, colors;
+    if (str.length == 10) {
+      a = 1 - parseInt(str.substring(2,4), 16) / 256;
+      r = parseInt(str.substring(4,6), 16);
+      g = parseInt(str.substring(6,8), 16);
+      b = parseInt(str.substring(8,10), 16);
+      return 'rgba(' + [r,g,b,a].join(', ') + ')';
+    } else {
+      r = parseInt(str.substring(2,4), 16);
+      g = parseInt(str.substring(4,6), 16);
+      b = parseInt(str.substring(6,8), 16);
+      return 'rgb(' + [r,g,b].join(', ') + ')';
+    }
   };
 
   //
@@ -215,8 +266,6 @@
   };
 
   View.createUi = function() {
-    View.removeUi();
-
     var uiWrap = document.createElement('div');
     uiWrap.id = 'chrome-subtitles-ui-wrap';
     var uiBody = document.createElement('div');
@@ -232,12 +281,12 @@
   
   View.removeUi = function() {
     var uiObj = document.getElementById("chrome-subtitles-ui-wrap");
-    if (uiObj) document.body.removeChild(uiObj);
+    if (!uiObj) return false;
+    document.body.removeChild(uiObj);
+    return true;
   };
 
   View.createControllers = function() {
-    View.removeControllers();
-
     var ctrlWrap = document.createElement('div');
     ctrlWrap.id = 'chrome-subtitles-controllers';
 
@@ -292,17 +341,19 @@
 
   View.removeControllers = function() {
     var ctrlObj = document.getElementById('chrome-subtitles-controllers');
-    if (ctrlObj) document.body.removeChild(ctrlObj);
+    if (!ctrlObj) return false;
+    document.body.removeChild(ctrlObj);
+    return true;
   };
 
   View.toggleCtpActive = function() {
-    var elem = document.getElemenyById('chrome-subtitles-click-to-play');
-    if(elem.className.indexOf('active') == -1) {
-      elem.className += 'active';
+    var elem = document.getElementById('chrome-subtitles-click-to-play');
+    if (elem.className.indexOf('active') == -1) {
+      elem.className += ' active';
       elem.title = 'Disable Click to Play';
       Control.addCtpListener();
     } else {
-      elem.className = elem.classNAme.replace(/\s?active/, '');
+      elem.className = elem.className.replace(/\s?active/, '');
       elem.title = 'Enable Click to Play';
       Control.removeCtpListener();
     }
@@ -361,10 +412,10 @@
     Model.initRunningTime();
     Model.initEventIndex();
     Model.resetDelay();
-    Model.updateStatus('ready');
+    Model.updateStatus('init');
 
-    Control.setPlayerObject();
-    Control.setPlayerContainerObject();
+    Model.setPlayerObject();
+    Model.setPlayerContainerObject();
 
     View.createSubsRoot();
     View.modPlayerObject();
@@ -373,55 +424,35 @@
     Model.setRootElementToSubtitle(document.getElementById(subsRootId));
   };
 
-  Control.setPlayerObject = function() {
-    var playerId;
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      playerId = 'player';
-    } else if (domain == 'www.youtube.com') {
-      playerId = 'movie_player';
-    } else {
-      playerId = 'player-object';
-    }
-    playerObject = document.getElementById(playerId);
-  };
-
-  Control.setPlayerContainerObject = function() {
-    var containerId;
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      containerId = 'player-container';
-    } else if (domain == 'www.youtube.com') {
-      containerId = 'player-api';
-    } else {
-      containerId = 'player-container';
-    }
-    playerContainer = document.getElementById(containerId);
-  };
-
   Control.addEventListenersForUi = function() {
     var fileReciever = 
           document.getElementById('chrome-subtitles-ui-file-selector');
     fileReciever.addEventListener('change', function() {
       var file = fileReciever.files[0];
+      var fname = file.name;
       var r = new FileReader();
-      var result;
+      
       r.addEventListener('load', function(e) {
-        if (file.name.indexOf('.ass') != -1) {
+        var result;
+        if (/\.ass$/.test(fname)) {
           result = Model.assParser(r.result);
-        } else if (file.name.indexOf('.srt') != -1) {
+        } else if (/\.srt$/.test(fname)) {
           result = Model.srtParser(r.result);
         } else {
-          console.error('invalid subtitle file');
-          result= {};
+          result = {'events': []};
         }
+
         Model.setTimeTable(result.events);
         if (result.styles) {
           var css = Model.v4pToCss(result.styles);
           View.appendStyles(css);
         }
+        Model.updateStatus('ready');
       }, true);
       r.readAsText(file, 'UTF-8');
 
       View.removeUi();
+      View.removeControllers();
       View.createControllers();
       Control.addEventListenersForControllers();
     });
@@ -478,18 +509,19 @@
         Control.youtube.seek(sec);
         rtime =  playerObject.getCurrentTime() * 1000;
       }
+
       Model.updateRunningTime(rtime);
       Model.updateEventIndex();
       Model.updateStatus('pause');
     });
   };
 
-  Control.addCtpListeners = function() {
-    playerObject.addEventListener('mouseup', View.togglePausePlay);
+  Control.addCtpListener = function() {
+    playerObject.addEventListener('mouseup', Control.togglePausePlay);
   };
 
-  Control.removeCtpListeners = function() {
-    playerObject.removeEventListener('mouseup', View.togglePausePlay);
+  Control.removeCtpListener = function() {
+    playerObject.removeEventListener('mouseup', Control.togglePausePlay);
   };
 
   Control.mainLoop = function() {
@@ -601,7 +633,7 @@
     playerObject.resumeVideo();
   };
 
-  Control.hulu.seek = function() {
+  Control.hulu.seek = function(sec) {
     playerObject.seekVideo(sec);
   };
   
@@ -609,27 +641,12 @@
   // 
   // common functions
   // 
-  function toRGBA(str) {
-    var r, g, b, a, colors;
-    if (str.length == 10) {
-      a = 1 - parseInt(str.substring(2,4), 16) / 256;
-      r = parseInt(str.substring(4,6), 16);
-      g = parseInt(str.substring(6,8), 16);
-      b = parseInt(str.substring(8,10), 16);
-      return 'rgba(' + [r,g,b,a].join(', ') + ')';
-    } else {
-      r = parseInt(str.substring(2,4), 16);
-      g = parseInt(str.substring(4,6), 16);
-      b = parseInt(str.substring(6,8), 16);
-      return 'rgb(' + [r,g,b].join(', ') + ')';
-    }
-  }
-  function strip(str) {
-    return str.replace(/^\s*(.*?)\s*$/, '$1');
-  }
 
 
+
+  // 
+  // main
+  // 
   main();
-
 
 })();
