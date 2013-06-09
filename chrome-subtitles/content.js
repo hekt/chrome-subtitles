@@ -21,13 +21,13 @@
 
 
   function main() {
-    Control.initialize();
+    Controller.initialize();
 
     View.removeControllers();
     View.removeUi();
     View.createUi();
 
-    Control.addEventListenersForUi();
+    Controller.addEventListenersForUi();
     
     if (timerId) clearInterval(timerId);
     View.removeAllSubs();
@@ -231,7 +231,7 @@
   };
 
   Model.toRGBA = function(str) {
-    var r, g, b, a, colors;
+    var r, g, b, a;
     if (str.length == 10) {
       a = 1 - parseInt(str.substring(2,4), 16) / 256;
       r = parseInt(str.substring(4,6), 16);
@@ -351,11 +351,11 @@
     if (elem.className.indexOf('active') == -1) {
       elem.className += ' active';
       elem.title = 'Disable Click to Play';
-      Control.addCtpListener();
+      Controller.addCtpListener();
     } else {
       elem.className = elem.className.replace(/\s?active/, '');
       elem.title = 'Enable Click to Play';
-      Control.removeCtpListener();
+      Controller.removeCtpListener();
     }
   };
 
@@ -404,11 +404,11 @@
   };
   
   // 
-  // Controls
+  // Controllers
   // 
-  var Control = {};
+  var Controller = {};
 
-  Control.initialize = function() {
+  Controller.initialize = function() {
     Model.initRunningTime();
     Model.initEventIndex();
     Model.resetDelay();
@@ -424,7 +424,7 @@
     Model.setRootElementToSubtitle(document.getElementById(subsRootId));
   };
 
-  Control.addEventListenersForUi = function() {
+  Controller.addEventListenersForUi = function() {
     var fileReciever = 
           document.getElementById('chrome-subtitles-ui-file-selector');
     fileReciever.addEventListener('change', function() {
@@ -454,22 +454,22 @@
       View.removeUi();
       View.removeControllers();
       View.createControllers();
-      Control.addEventListenersForControllers();
+      Controller.addEventListenersForControllers();
     });
   };
 
-  Control.addEventListenersForControllers = function() {
+  Controller.addEventListenersForControllers = function() {
     // global
     currentTimeBox = document.getElementById('chrome-subtitles-play-time');
 
     var playButton = document.getElementById('chrome-subtitles-play');
     playButton.addEventListener('click', function() {
       if (status == 'ready' || status == 'pause') {
-        Control.play();
-        Control.playVideo();
+        Controller.play();
+        Controller.playVideo();
       } else {
-        Control.pause();
-        Control.pauseVideo();
+        Controller.pause();
+        Controller.pauseVideo();
       }
     });
     var delayButton = document.getElementById('chrome-subtitles-adjust-delay');
@@ -504,9 +504,9 @@
       rtime = sec * 1000;
 
       if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') { 
-        Control.hulu.seek(sec);
+        Controller.hulu.seek(sec);
       } else if (domain == 'www.youtube.com') {
-        Control.youtube.seek(sec);
+        Controller.youtube.seek(sec);
         rtime =  playerObject.getCurrentTime() * 1000;
       }
 
@@ -516,15 +516,15 @@
     });
   };
 
-  Control.addCtpListener = function() {
-    playerObject.addEventListener('mouseup', Control.togglePausePlay);
+  Controller.addCtpListener = function() {
+    playerObject.addEventListener('mouseup', Controller.togglePausePlay);
   };
 
-  Control.removeCtpListener = function() {
-    playerObject.removeEventListener('mouseup', Control.togglePausePlay);
+  Controller.removeCtpListener = function() {
+    playerObject.removeEventListener('mouseup', Controller.togglePausePlay);
   };
 
-  Control.mainLoop = function() {
+  Controller.mainLoop = function() {
     var time, target;
 
     currentTime = new Date();
@@ -545,13 +545,13 @@
       target = timeTable[eventIndex];
     }
     if (!target) {
-      Control.pause();
+      Controller.pause();
       Model.updateStatus('ready');
       Model.initEventIndex();
     }
   };
 
-  Control.play = function() {
+  Controller.play = function() {
     View.removeAllSubs();
 
     if (status == 'ready') {
@@ -565,11 +565,11 @@
     View.togglePausePlayButton();
     console.log('play');
     previousTime = new Date();
-    timerId = setInterval(Control.mainLoop, 50);
+    timerId = setInterval(Controller.mainLoop, 50);
     return true;
   };
 
-  Control.pause = function() {
+  Controller.pause = function() {
     if (status != 'playing') return false;
     
     clearInterval(timerId);
@@ -580,32 +580,32 @@
     return true;
   };
 
-  Control.togglePausePlay = function() {
+  Controller.togglePausePlay = function() {
     if (status == 'ready' || status == 'pause') {
-      Control.play();
+      Controller.play();
     } else {
-      Control.pause();
+      Controller.pause();
     }
   };
 
-  Control.playVideo = function() {
+  Controller.playVideo = function() {
     if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
-      Control.hulu.play();
+      Controller.hulu.play();
     } else if (domain == 'www.youtube.com') {
-      Control.youtube.play();
+      Controller.youtube.play();
     }
   };
   
-  Control.pauseVideo = function() {
+  Controller.pauseVideo = function() {
     if (domain == 'www.youtube.com') {
-      Control.youtube.pause();
+      Controller.youtube.pause();
     }
   };
 
   // Youtube
-  Control.youtube = {};
+  Controller.youtube = {};
 
-  Control.youtube.togglePausePlay = function() {
+  Controller.youtube.togglePausePlay = function() {
     var state = playerObject.getPlayerState();
     if (state == 1) {
       playerObject.pauseVideo();
@@ -614,34 +614,28 @@
     }    
   };
   
-  Control.youtube.play = function() {
+  Controller.youtube.play = function() {
     playerObject.playVideo();
   };
 
-  Control.youtube.pause = function() {
+  Controller.youtube.pause = function() {
     playerObject.pauseVideo();
   };
 
-  Control.youtube.seek = function(sec) {
+  Controller.youtube.seek = function(sec) {
     playerObject.seekTo(sec);
   };
 
   // hulu
-  Control.hulu = {};
+  Controller.hulu = {};
 
-  Control.hulu.play = function() {
+  Controller.hulu.play = function() {
     playerObject.resumeVideo();
   };
 
-  Control.hulu.seek = function(sec) {
+  Controller.hulu.seek = function(sec) {
     playerObject.seekVideo(sec);
   };
-  
-  
-  // 
-  // common functions
-  // 
-
 
 
   // 
