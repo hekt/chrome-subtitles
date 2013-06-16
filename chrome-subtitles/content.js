@@ -78,25 +78,37 @@
 
   Model.setPlayerObject = function() {
     var playerId;
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+
+    switch (domain) {
+    case 'www.hulu.jp':
+    case 'www.hulu.com':
       playerId = 'player';
-    } else if (domain == 'www.youtube.com') {
+      break;
+    case 'www.youtube.com':
       playerId = 'movie_player';
-    } else {
+      break;
+    default:
       playerId = 'player-object';
     }
+
     playerObject = document.getElementById(playerId);
   };
 
   Model.setPlayerContainerObject = function() {
     var containerId;
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+
+    switch (domain) {
+    case 'www.hulu.jp':
+    case 'www.hulu.com':
       containerId = 'player-container';
-    } else if (domain == 'www.youtube.com') {
+      break;
+    case 'www.youtube.com':
       containerId = 'player-api';
-    } else {
+      break;
+    default:
       containerId = 'player-container';
     }
+
     playerContainer = document.getElementById(containerId);
   };
 
@@ -108,19 +120,10 @@
     return SubtitleParser().srtParser(content);
   };
 
-  Model.setTimeTableFromFile = function(file) {
-    var fname = file.name;
-    var fcontent = Model.readFile(file);
-    var events;
-    if (/\.ass/.text(fname)) {
-    }
-  };
-
   Model.setTimeTable = function(events) {
-    var e;
     var table = [];
     for (var i = 0; i < events.length; i++) {
-      e = events[i];
+      var e = events[i];
       table.push(new Model.Subtitle(e.start, e.end, e.texts, 
                                     e.id, e.className));
     }
@@ -129,51 +132,58 @@
   };
 
   Model.v4pToCss = function(styles) {
-    var decorations, outline, align, posTop, posBottom;
-    var s, wrapSelector, wrapStyles, lineSelector, lineStyles;
     var css = {};
 
     for (var i=0; i < styles.length; i++) {
-      s = styles[i];
+      var s = styles[i];
       
       // text-decorations: Underline, StrikeOut
-      decorations = [];
-      if (s['Underline'] == '1') decorations.push('underline');
-      if (s['StrikeOut'] == '1') decorations.push('line-through');
-      decorations = decorations == [] ? 'none' : decorations.join(' ');
+      var decorations;
+      var decoList = [];
+      if (s['Underline'] === '1') decoList.push('underline');
+      if (s['StrikeOut'] === '1') decoList.push('line-through');
+      decorations = (decoList.length > 0) ? decoList.join(' ') : 'none';
 
       // text-shadow: Outline
-      outline = ['1px 1px', '1px -1px', '-1px 1px', '-1px -1px']
+      var outline = ['1px 1px', '1px -1px', '-1px 1px', '-1px -1px']
         .map(function(e) {
           return e + ' ' + Model.toRGBA(s['OutlineColour']);
         }).join(', ');
 
       // text-align, top/bottom: Alignment
-      var alignMod = s['Alignment'] % 3;
-      if (alignMod == 0) {
+      var align;
+      switch (s['Alignment'] % 3) {
+      case 0:
         align = 'right';
-      } else if (alignMod == 1) {
+        break;
+      case 1:
         align = 'left';
-      } else {
+        break;
+      case 2:
         align = 'center';
-      }
-      var alignDiv = s['Alignment'] / 3;
-      posTop = 'auto';
-      posBottom = 'auto';
-      if (alignDiv > 2) {
-        posTop = '5%';
-      } else if (alignDiv > 1) {
-        posTop = '50%';
-      } else {
-        posBottom = '5%';
+        break;
       }
 
-      wrapSelector = '.' + s['Name'];
-      wrapStyles = {
+      var posTop = 'auto';
+      var posBottom = 'auto';
+      switch (Math.ceil(s['Alignment'] / 3)) {
+      case 1:
+        posBottom = '5%';
+        break;
+      case 2:
+        posTop = '50%';
+        break;
+      case 3:
+        posTop = '5%';
+        break;
+      }
+
+      var wrapSelector = '.' + s['Name'];
+      var wrapStyles = {
         'color': Model.toRGBA(s['PrimaryColour']),
         'font-family': s['Fontname'],
-        'font-weight': s['Bold'] == '1' ? 'bold' : 'normal',
-        'font-style': s['Italic'] == '1' ? 'italic' : 'normal',
+        'font-weight': s['Bold'] === '1' ? 'bold' : 'normal',
+        'font-style': s['Italic'] === '1' ? 'italic' : 'normal',
         'text-align': align,
         'text-decoration': decorations,
         'text-shadow': outline,
@@ -182,8 +192,8 @@
         'bottom': posBottom
       };
 
-      lineSelector = wrapSelector + ' ' + subsLineClass;
-      lineStyles = {
+      var lineSelector = wrapSelector + ' ' + subsLineClass;
+      var lineStyles = {
         'background-color': Model.toRGBA(s['BackColour'])
       };
 
@@ -208,11 +218,11 @@
 
   Model.updateEventIndex = function() {
     for (var i = 0; i < timeTableLength; i++) {
-      if (runningTime == timeTable[i].start) {
+      if (runningTime === timeTable[i].start) {
         eventIndex = i;
         break;
       } else if (runningTime < timeTable[i].start) {
-        eventIndex = i == 0 ? i : i - 1;
+        eventIndex = i === 0 ? i : i - 1;
         break;
       }
     }
@@ -232,7 +242,8 @@
 
   Model.toRGBA = function(str) {
     var r, g, b, a;
-    if (str.length == 10) {
+    
+    if (str.length === 10) {
       a = 1 - parseInt(str.substring(2,4), 16) / 256;
       r = parseInt(str.substring(4,6), 16);
       g = parseInt(str.substring(6,8), 16);
@@ -244,6 +255,10 @@
       b = parseInt(str.substring(6,8), 16);
       return 'rgb(' + [r,g,b].join(', ') + ')';
     }
+  };
+
+  Model.getExtension = function(str) {
+    return str.replace(/.*\.([a-z0-9])/i, '$1');
   };
 
   //
@@ -300,7 +315,7 @@
     ctrlPlay.title = 'Play';
     ctrlForm.appendChild(ctrlPlay);
 
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+    if (domain === 'www.hulu.jp' || domain === 'www.hulu.com') {
       var ctrlClickToPlay = document.createElement('input');
       ctrlClickToPlay.id = 'chrome-subtitles-click-to-play';
       ctrlClickToPlay.type = 'button';
@@ -348,7 +363,8 @@
 
   View.toggleCtpActive = function() {
     var elem = document.getElementById('chrome-subtitles-click-to-play');
-    if (elem.className.indexOf('active') == -1) {
+
+    if (elem.className.indexOf('active') === -1) {
       elem.className += ' active';
       elem.title = 'Disable Click to Play';
       Controller.addCtpListener();
@@ -364,21 +380,20 @@
     document.head.appendChild(styleElem);
     var css = styleElem.sheet || styleElem.styleSheet;
 
-    var l, d, s;
     for (var selector in styles) {
-      l = [];
-      d = styles[selector];
+      var s = selector + ' {';
+      var d = styles[selector];
       for (var k in d) {
-        l.push(k + ':' + d[k] + ';');
+        s += k +':' + d[k] + ';';
       }
-      s = selector + ' {' + l.join('') + '}';
+      s += '}';
       css.insertRule(s, css.cssRules.length);
     }    
   };
 
   View.togglePausePlayButton = function() {
     var elem = document.getElementById('chrome-subtitles-play');
-    if (elem.className.indexOf('active') == -1) {
+    if (elem.className.indexOf('active') === -1) {
       elem.className += ' active';
       elem.value = '❙❙';
       elem.title = 'Pause';
@@ -434,11 +449,15 @@
       
       r.addEventListener('load', function(e) {
         var result;
-        if (/\.ass$/.test(fname)) {
+
+        switch (Model.getExtension(fname).toLowerCase()) {
+        case 'ass':
           result = Model.assParser(r.result);
-        } else if (/\.srt$/.test(fname)) {
+          break;
+        case 'srt':
           result = Model.srtParser(r.result);
-        } else {
+          break;
+        default:
           result = {'events': []};
         }
 
@@ -464,12 +483,16 @@
 
     var playButton = document.getElementById('chrome-subtitles-play');
     playButton.addEventListener('click', function() {
-      if (status == 'ready' || status == 'pause') {
+      switch (status) {
+      case 'ready':
+      case 'pause':
         Controller.play();
         Controller.playVideo();
-      } else {
+        break;
+      case 'playing':
         Controller.pause();
         Controller.pauseVideo();
+        break;
       }
     });
     var delayButton = document.getElementById('chrome-subtitles-adjust-delay');
@@ -488,7 +511,7 @@
       console.log('no delay');
     });
 
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+    if (domain === 'www.hulu.jp' || domain === 'www.hulu.com') {
       var syncButton = 
             document.getElementById('chrome-subtitles-click-to-play');
       syncButton.addEventListener('click', View.toggleCtpActive);
@@ -496,18 +519,22 @@
 
     var wrapForm = document.getElementById('chrome-subtitles-form');
     wrapForm.addEventListener('submit', function(e) {
-      var elem, t, sec, rtime;
+      var t, sec, rtime;
       e.preventDefault();
       t = document.getElementById('chrome-subtitles-play-time')
         .value.split(':').map(parseFloat);
       sec = t[0] * 60 + t[1];
       rtime = sec * 1000;
 
-      if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') { 
+      switch (domain) {
+      case 'www.hulu.jp':
+      case 'www.hulu.com':
         Controller.hulu.seek(sec);
-      } else if (domain == 'www.youtube.com') {
+        break;
+      case 'www.youtube.com':
         Controller.youtube.seek(sec);
-        rtime =  playerObject.getCurrentTime() * 1000;
+        rtime = playerObject.getCurrentTime() * 1000;
+        break;
       }
 
       Model.updateRunningTime(rtime);
@@ -538,11 +565,10 @@
     while(target && time >= target.start) {
       if (time > target.start) {
         console.info('id: ' + target.id + ' skipped');
-      } else if (time == target.start) {
+      } else if (time === target.start) {
         target.action();
       }
-      eventIndex += 1;
-      target = timeTable[eventIndex];
+      target = timeTable[++eventIndex];
     }
     if (!target) {
       Controller.pause();
@@ -552,20 +578,21 @@
   };
 
   Controller.play = function() {
+    if(!timeTable) return false;
+
     View.removeAllSubs();
 
-    if (status == 'ready') {
+    if (status === 'ready') {
       Model.initRunningTime();
       Model.initEventIndex();
     }
-    
-    if(!timeTable) return false;
 
     Model.updateStatus('playing');
     View.togglePausePlayButton();
     console.log('play');
     previousTime = new Date();
     timerId = setInterval(Controller.mainLoop, 50);
+
     return true;
   };
 
@@ -577,28 +604,39 @@
     View.togglePausePlayButton();
     console.log('pause');
     console.log('running time(ms): ' + runningTime);
+
     return true;
   };
 
   Controller.togglePausePlay = function() {
-    if (status == 'ready' || status == 'pause') {
+    switch (status) {
+    case 'ready':
+    case 'pause':
       Controller.play();
-    } else {
+      break;
+    case 'playing':
       Controller.pause();
+      break;
     }
   };
 
   Controller.playVideo = function() {
-    if (domain == 'www.hulu.jp' || domain == 'www.hulu.com') {
+    switch (domain) {
+    case 'www.hulu.jp':
+    case 'www.hulu.com':
       Controller.hulu.play();
-    } else if (domain == 'www.youtube.com') {
+      break;
+    case 'www.youtube.com':
       Controller.youtube.play();
+      break;
     }
   };
   
   Controller.pauseVideo = function() {
-    if (domain == 'www.youtube.com') {
+    switch (domain) {
+    case 'www.youtube.com':
       Controller.youtube.pause();
+      break;
     }
   };
 
@@ -606,12 +644,13 @@
   Controller.youtube = {};
 
   Controller.youtube.togglePausePlay = function() {
-    var state = playerObject.getPlayerState();
-    if (state == 1) {
+    switch (playerObject.getPlayerState()){
+    case 1:
       playerObject.pauseVideo();
-    } else {
+      break;
+    default:
       playerObject.playVideo();
-    }    
+    }
   };
   
   Controller.youtube.play = function() {
