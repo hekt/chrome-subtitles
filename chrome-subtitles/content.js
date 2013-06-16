@@ -5,20 +5,7 @@
   var subsLineClass = 'chrome-subtitles-line';
   var domain = location.href.match(/(?:http|file)s?:\/\/([a-z.]+)/)[1];
 
-  var timerId;
-  var timeTable;
-  var timeTableLength;
-  var currentTime;
-  var previousTime;
-  var playerObject;
-  var playerContainer;
   var currentTimeBox;
-
-  var eventIndex;
-  var runningTime;
-  var delayMs;
-  var status;
-
 
   function main() {
     Controller.initialize();
@@ -28,8 +15,6 @@
     View.createUi();
 
     Controller.addEventListenersForUi();
-    
-    if (timerId) clearInterval(timerId);
     View.removeAllSubs();
   }
 
@@ -39,96 +24,68 @@
   // 
   var Model = {};
 
-  Model.Subtitle = function(start, end ,texts, id, opt_className) {
-    this.start = start;
-    this.end = end;
-    this.texts = texts;
-    this.id = id;
-    if (opt_className) this.className = opt_className;
+  Model.Subtitle = Subtitle;
+  Model.assParser = SubtitleParser.assParser;
+  Model.srtParser = SubtitleParser.srtParser;
+
+  Model.initSubtitle = function() {
+    Model.Subtitle.prototype.rootId = subsRootId;
+    Model.Subtitle.prototype.wrapClassName = subsWrapClass,
+    Model.Subtitle.prototype.textClassName = subsTextClass,
+    Model.Subtitle.prototype.lineClassName = subsLineClass,
+    Model.Subtitle.prototype.rootElement = document.getElementById(subsRootId);
   };
-  Model.Subtitle.prototype = {
-    rootId: subsRootId,
-    wrapClassName: subsWrapClass,
-    textClassName: subsTextClass,
-    lineClassName: subsLineClass,
-    rootElement: document.body,
-    action: function() {
-      var wrap, text, lines;
-      wrap = document.createElement('div');
-      wrap.className = this.wrapClassName;
-      wrap.id = this.id;
-      if (this.className) wrap.className += ' ' + this.className;
-      text = document.createElement('div');
-      text.className = this.textClassName;
-      lines = '<span class="' + this.lineClassName + '">' +
-        this.texts.join('</span><br><span class="' + this.lineClassName + 
-                        '">') +'</span>';
-      text.innerHTML = lines;
-      wrap.appendChild(text);
-      this.rootElement.appendChild(wrap);
-      setTimeout(function(p, c) { if (c) p.removeChild(c); },
-                 this.end - this.start,
-                 this.rootElement, wrap);
-    }
+
+  Model.initPlayer = function(events) {
+    Model.player = new SubtitlePlayer(events);
   };
 
   Model.setRootElementToSubtitle = function(elem) {
-    Model.Subtitle.prototype.rootElement = elem;
+    Model.Subtitle.init({
+      rootId: subsRootId,
+      wrapClassName: subsWrapClass,
+      textClassName: subsTextClass,
+      lineClassName: subsLineClass,
+      rootelement: document.getElementById(subsRootId)
+    });
   };
 
-  Model.setPlayerObject = function() {
-    var playerId;
-
+  Model.setVideoPlayer = function() {
     switch (domain) {
     case 'www.hulu.jp':
     case 'www.hulu.com':
-      playerId = 'player';
+      Model.videoPlayer = {
+        object: document.getelementById('player'),
+        container: document.getElementById('player-container'),
+        play: Model.videoPlayer.object.resumeVideo,
+        pause: function() {},
+        seek: Model.videoPlayer.object.seekTo,
+        getCurrentTime: function() {},
+        getPlayerState: function() {}
+      };
       break;
     case 'www.youtube.com':
-      playerId = 'movie_player';
+      Model.videoPlayer = {
+        object: document.getElementById('movie_player'),
+        container: document.getElementById('player-api'),
+        play: Model.videoPlayer.object.playVideo,
+        pause: Model.videoPlayer.object.pauseVideo,
+        seek: Model.videoPlayer.object.seekTo,
+        getCurrentTime: Model.videoPlayer.object.getCurrentTime,
+        getPlayerState: Model.videoPlayer.object.getPlayerState
+      };
       break;
     default:
-      playerId = 'player-object';
+      Model.videoPlayer = {
+        object: document.getElementById('player-object'),
+        container: document.getElementById('player-container'),
+        play: function() {},
+        pause: function() {},
+        seek: function() {},
+        getCurrentTime: function() {},
+        getPlayerState: function() {}
+      };
     }
-
-    playerObject = document.getElementById(playerId);
-  };
-
-  Model.setPlayerContainerObject = function() {
-    var containerId;
-
-    switch (domain) {
-    case 'www.hulu.jp':
-    case 'www.hulu.com':
-      containerId = 'player-container';
-      break;
-    case 'www.youtube.com':
-      containerId = 'player-api';
-      break;
-    default:
-      containerId = 'player-container';
-    }
-
-    playerContainer = document.getElementById(containerId);
-  };
-
-  Model.assParser = function(content) {
-    return SubtitleParser().assParser(content);
-  };
-
-  Model.srtParser = function(content) {
-    return SubtitleParser().srtParser(content);
-  };
-
-  Model.setTimeTable = function(events) {
-    var table = [];
-    for (var i = 0; i < events.length; i++) {
-      var e = events[i];
-      table.push(new Model.Subtitle(e.start, e.end, e.texts, 
-                                    e.id, e.className));
-    }
-    timeTable = table;
-    timeTableLength = timeTable.length;
   };
 
   Model.v4pToCss = function(styles) {
@@ -204,42 +161,6 @@
     return css;
   };
 
-  Model.delay = function(ms) {
-    delayMs += ms;
-  };
-  
-  Model.resetDelay = function() {
-    delayMs = 0;
-  };
-
-  Model.updateRunningTime = function(ms) {
-    runningTime = ms;
-  };
-
-  Model.updateEventIndex = function() {
-    for (var i = 0; i < timeTableLength; i++) {
-      if (runningTime === timeTable[i].start) {
-        eventIndex = i;
-        break;
-      } else if (runningTime < timeTable[i].start) {
-        eventIndex = i === 0 ? i : i - 1;
-        break;
-      }
-    }
-  };
-
-  Model.initRunningTime = function() {
-    runningTime = 0;
-  };
-
-  Model.initEventIndex = function() {
-    eventIndex = 0;
-  };
-
-  Model.updateStatus = function(st) {
-    status = st;
-  };
-
   Model.toRGBA = function(str) {
     var r, g, b, a;
     
@@ -269,15 +190,12 @@
   View.createSubsRoot = function() {
     var root = document.createElement('div');
     root.id = subsRootId;
-    playerContainer.appendChild(root);
+    Model.videoPlayer.container.appendChild(root);
   };
 
-  View.modPlayerObject = function() {
-    playerObject.setAttribute('wmode', 'transparent');
-  };
-
-  View.modPlayerContainer = function() {
-    playerContainer.style.position = 'relative';
+  View.modVideoPlayerObject = function() {
+    Model.videoPlayer.object.setAttribute('wmode', 'transparent');
+    Model.videoPlayer.container.style.position = 'relative';
   };
 
   View.createUi = function() {
@@ -393,22 +311,28 @@
 
   View.togglePausePlayButton = function() {
     var elem = document.getElementById('chrome-subtitles-play');
-    if (elem.className.indexOf('active') === -1) {
+
+    switch (Model.player.getPlayerState()) {
+    case 'playing':
       elem.className += ' active';
       elem.value = '❙❙';
       elem.title = 'Pause';
-    } else {
+      break;
+    case 'ready':
+    case 'pause':
       elem.className = elem.className.replace(/\s?active/, '');
       elem.value = '▶';
       elem.title = 'Play';
-    }    
+      break;
+    }
   };
 
   View.updateTimeBox = function() {
     var m, s;
-    m = Math.floor(runningTime / 1000 / 60);
+    var time = Model.player.getCurrentTime();
+    m = Math.floor(time / 1000 / 60);
     m = m < 10 ? '0' + m : m;
-    s = Math.floor(runningTime / 1000) % 60;
+    s = Math.floor(time / 1000) % 60;
     s = s < 10 ? '0' + s : s;
     currentTimeBox.value = m + ':' + s;
   };
@@ -424,19 +348,12 @@
   var Controller = {};
 
   Controller.initialize = function() {
-    Model.initRunningTime();
-    Model.initEventIndex();
-    Model.resetDelay();
-    Model.updateStatus('init');
-
-    Model.setPlayerObject();
-    Model.setPlayerContainerObject();
+    Model.setVideoPlayer();
 
     View.createSubsRoot();
-    View.modPlayerObject();
-    View.modPlayerContainer();
-    
-    Model.setRootElementToSubtitle(document.getElementById(subsRootId));
+    View.modVideoPlayerObject();
+
+    Model.initSubtitle();
   };
 
   Controller.addEventListenersForUi = function() {
@@ -461,12 +378,12 @@
           result = {'events': []};
         }
 
-        Model.setTimeTable(result.events);
+        Model.initPlayer(result.events);
+        Controller.addListenerToPlayer();
         if (result.styles) {
           var css = Model.v4pToCss(result.styles);
           View.appendStyles(css);
         }
-        Model.updateStatus('ready');
       }, true);
       r.readAsText(file, 'UTF-8');
 
@@ -483,32 +400,33 @@
 
     var playButton = document.getElementById('chrome-subtitles-play');
     playButton.addEventListener('click', function() {
-      switch (status) {
+      switch (Model.player.getPlayerState()) {
       case 'ready':
       case 'pause':
-        Controller.play();
-        Controller.playVideo();
+        Model.player.play();
+        Model.videoPlayer.play();
         break;
       case 'playing':
-        Controller.pause();
-        Controller.pauseVideo();
+        Model.player.pause();
+        Model.videoPlayer.pause();
         break;
       }
     });
     var delayButton = document.getElementById('chrome-subtitles-adjust-delay');
     delayButton.addEventListener('click', function() {
-      Model.delay(100);
-      console.log(delayMs + 'ms delay');
+      var newDelay = Model.player.getDelay() + 100;
+      Model.player.setDelay(newDelay);
+      console.log(newDelay + 'ms delay');
     });
     var advButton = document.getElementById('chrome-subtitles-adjust-advance');
     advButton.addEventListener('click', function() {
-      Model.delay(-100);
-      console.log(delayMs + 'ms delay');
+      var newDelay = Model.player.getDelay() - 100;
+      Model.palyer.setDelay(newDelay);
+      console.log(newDelay + 'ms delay');
     });
     var resetButton = document.getElementById('chrome-subtitles-adjust-reset');
     resetButton.addEventListener('click', function() {
-      Model.resetDelay();
-      console.log('no delay');
+      Model.player.setDelay(0);
     });
 
     if (domain === 'www.hulu.jp' || domain === 'www.hulu.com') {
@@ -526,156 +444,51 @@
       sec = t[0] * 60 + t[1];
       rtime = sec * 1000;
 
-      switch (domain) {
-      case 'www.hulu.jp':
-      case 'www.hulu.com':
-        Controller.hulu.seek(sec);
-        break;
-      case 'www.youtube.com':
-        Controller.youtube.seek(sec);
-        rtime = playerObject.getCurrentTime() * 1000;
-        break;
-      }
+      Model.videoPlayer.seek(sec);
+      
+      if (domain === 'www.youtube.com')
+        rtime = Model.videoPlayer.getCurrentTime() * 1000;
 
-      Model.updateRunningTime(rtime);
-      Model.updateEventIndex();
-      Model.updateStatus('pause');
+      Model.player.seekTo(rtime);
     });
   };
 
+  Controller.addListenerToPlayer = function() {
+    Model.player.addEventListener('onPlaying', View.updateTimeBox);
+    Model.player.addEventListener('onStateChange', View.togglePausePlayButton);
+  };
+
   Controller.addCtpListener = function() {
-    playerObject.addEventListener('mouseup', Controller.togglePausePlay);
+    Model.videoPlayer.object
+      .addEventListener('mouseup', Controller.togglePausePlay);
   };
 
   Controller.removeCtpListener = function() {
-    playerObject.removeEventListener('mouseup', Controller.togglePausePlay);
-  };
-
-  Controller.mainLoop = function() {
-    var time, target;
-
-    currentTime = new Date();
-    runningTime += currentTime - previousTime;
-    previousTime = currentTime;
-    View.updateTimeBox();
-
-    time = Math.floor((runningTime - delayMs) / 100) * 100;
-    target = timeTable[eventIndex];
-
-    while(target && time >= target.start) {
-      if (time > target.start) {
-        console.info('id: ' + target.id + ' skipped');
-      } else if (time === target.start) {
-        target.action();
-      }
-      target = timeTable[++eventIndex];
-    }
-    if (!target) {
-      Controller.pause();
-      Model.updateStatus('ready');
-      Model.initEventIndex();
-    }
-  };
-
-  Controller.play = function() {
-    if(!timeTable) return false;
-
-    View.removeAllSubs();
-
-    if (status === 'ready') {
-      Model.initRunningTime();
-      Model.initEventIndex();
-    }
-
-    Model.updateStatus('playing');
-    View.togglePausePlayButton();
-    console.log('play');
-    previousTime = new Date();
-    timerId = setInterval(Controller.mainLoop, 50);
-
-    return true;
-  };
-
-  Controller.pause = function() {
-    if (status != 'playing') return false;
-    
-    clearInterval(timerId);
-    Model.updateStatus('pause');
-    View.togglePausePlayButton();
-    console.log('pause');
-    console.log('running time(ms): ' + runningTime);
-
-    return true;
+    Model.videoPlayer.object
+      .removeEventListener('mouseup', Controller.togglePausePlay);
   };
 
   Controller.togglePausePlay = function() {
-    switch (status) {
+    switch (Model.player.getPlayerState()) {
     case 'ready':
     case 'pause':
-      Controller.play();
+      Model.player.play();
       break;
     case 'playing':
-      Controller.pause();
+      Model.player.pause();
       break;
     }
   };
 
-  Controller.playVideo = function() {
-    switch (domain) {
-    case 'www.hulu.jp':
-    case 'www.hulu.com':
-      Controller.hulu.play();
-      break;
-    case 'www.youtube.com':
-      Controller.youtube.play();
-      break;
-    }
-  };
-  
-  Controller.pauseVideo = function() {
-    switch (domain) {
-    case 'www.youtube.com':
-      Controller.youtube.pause();
-      break;
-    }
-  };
-
-  // Youtube
-  Controller.youtube = {};
-
-  Controller.youtube.togglePausePlay = function() {
-    switch (playerObject.getPlayerState()){
+  Controller.togglePausePlayVideo = function() {
+    switch (Model.videoPlayer.getPlayerState()){
     case 1:
-      playerObject.pauseVideo();
+      Model.videoPlayer.pause();
       break;
     default:
-      playerObject.playVideo();
+      Model.videoPlayer.play();
     }
   };
-  
-  Controller.youtube.play = function() {
-    playerObject.playVideo();
-  };
-
-  Controller.youtube.pause = function() {
-    playerObject.pauseVideo();
-  };
-
-  Controller.youtube.seek = function(sec) {
-    playerObject.seekTo(sec);
-  };
-
-  // hulu
-  Controller.hulu = {};
-
-  Controller.hulu.play = function() {
-    playerObject.resumeVideo();
-  };
-
-  Controller.hulu.seek = function(sec) {
-    playerObject.seekVideo(sec);
-  };
-
 
   // 
   // main

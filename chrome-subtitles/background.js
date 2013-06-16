@@ -16,7 +16,7 @@
   });
   chrome.pageAction.onClicked.addListener(function(tab) {
     chrome.tabs.insertCSS(null, {file: "content.css"});
-    chrome.tabs.executeScript(null, {file: "parser.js"});
+    chrome.tabs.executeScript(null, {file: "subtitle.js"});
     chrome.tabs.executeScript(null, {file: "content.js"});
   });
 
