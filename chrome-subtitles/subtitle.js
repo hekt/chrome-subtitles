@@ -2,11 +2,11 @@
 
 var SubtitleParser = (function() {
   return {
-    assParser: _assParser,
-    srtParser: _srtParser
+    assParser: assParser,
+    srtParser: srtParser
   };
 
-  function _assParser(fileContent) {
+  function assParser(fileContent) {
     var reStr = 
           '\\[(.+)\\]' + '(?:\\r\\n|\\n\\r|\\r|\\n)' +
           '((?:' + '[^\[]+' + '(?:\\r\\n|\\n\\r|\\r|\\n)+' + ')+)';
@@ -22,7 +22,7 @@ var SubtitleParser = (function() {
     return {'events': events, 'styles': styles};
   };
 
-  function _srtParser(fileContent) {
+  function srtParser(fileContent) {
     var reStr = 
           '([0-9]+)' + '(?:\\r\\n|\\n\\r|\\r|\\n)' +
           '(' + 
@@ -150,10 +150,10 @@ var Subtitle = function(start, end ,texts, id, opt_className) {
   this.className = opt_className || undefined;
 };
 Subtitle.prototype = {
-  rootId: 'root',
-  wrapClassName: 'wrap',
-  textClassName: 'text',
-  lineClassName: 'line',
+  rootId: 'subtitle-root',
+  wrapClassName: 'subtitle-wrap',
+  textClassName: 'subtitle-text',
+  lineClassName: 'subtitle-line',
   rootElement: document.body,
   action: function() {
     var wrap, text, lines;
@@ -164,8 +164,8 @@ Subtitle.prototype = {
     text = document.createElement('div');
     text.className = this.textClassName;
     lines = '<span class="' + this.lineClassName + '">' +
-      this.texts.join('</span><br><span class="' + this.lineClassName + 
-                      '">') +'</span>';
+      this.texts.join('</span><br><span class="' + this.lineClassName + '">') 
+      + '</span>';
     text.innerHTML = lines;
     wrap.appendChild(text);
     this.rootElement.appendChild(wrap);
@@ -189,43 +189,44 @@ var SubtitlePlayer = function(rawEvents) {
     'onPlaying': []
   };
 
-  this.play = _play;
-  this.pause = _pause;
-  this.stop = _stop;
-  this.seekTo = _seekTo;
-  this.reset = _reset;
-  this.getCurrentTime = _getCurrentTime;
-  this.getDelay = _getDelay;
-  this.setDelay = _setDelay;
-  this.getPlayerState = _getPlayerState;
-  this.addEventListener = _addEventListener;
-  this.removeEventListener = _removeEventListener;
+  this.play = play;
+  this.pause = pause;
+  this.stop = stop;
+  this.seekTo = seekTo;
+  this.reset = reset;
+  this.getCurrentTime = getCurrentTime;
+  this.getDelay = getDelay;
+  this.setDelay = setDelay;
+  this.getPlayerState = getPlayerState;
+  this.addEventListener = addEventListener;
+  this.removeEventListener = removeEventListener;
 
-  function _play() {
-    updateState('playing');
-    initLoop();
+
+  // public methods
+
+  function play() {
+    oldTime = new Date();
     timerId = setInterval(loop, 50);
+    updateState('playing');
   }
 
-  function _pause() {
+  function pause() {
+    clearInterval(timerId);
     updateState('pause');
-    clearInterval(timerId);
   }
 
-  function _stop() {
+  function stop() {
+    reset();
+    clearInterval(timerId);
     updateState('ready');
-    _reset();
-    clearInterval(timerId);
-
   }
 
-  function _reset() {
+  function reset() {
     idx = 0;
     currentTime = 0;
   }
 
-  function _seekTo(ms) {
-    updateState('pause');
+  function seekTo(ms) {
     currentTime = ms;
     for (var i = 0; i < events.length; i++) {
       if (currentTime === events[i].start) {
@@ -236,29 +237,30 @@ var SubtitlePlayer = function(rawEvents) {
         break;
       }
     }
+    updateState('pause');
   }
 
-  function _getPlayerState() {
+  function getPlayerState() {
     return state;
   }
 
-  function _getCurrentTime() {
+  function getCurrentTime() {
     return currentTime;
   }
 
-  function _getDelay() {
+  function getDelay() {
     return delay;
   }
 
-  function _setDelay(ms) {
+  function setDelay(ms) {
     delay = ms;
   }
 
-  function _addEventListener(event, listener) {
+  function addEventListener(event, listener) {
     listeners[event].push(listener);
   }
 
-  function _removeEventListener(event, listener) {
+  function removeEventListener(event, listener) {
     var ls = listeners[event];
     for (var i = 0; i < ls.length; i++) {
       if (ls[i] === listener) {
@@ -268,6 +270,8 @@ var SubtitlePlayer = function(rawEvents) {
     }
   }
 
+
+  // private methods
 
   function loop() {
     var time, event;
@@ -288,11 +292,7 @@ var SubtitlePlayer = function(rawEvents) {
       ls[i]();
     }
 
-    if (!event) _stop();
-  }
-
-  function initLoop() {
-    oldTime = new Date();
+    if (!event) stop();
   }
 
   function updateState(newState) {
