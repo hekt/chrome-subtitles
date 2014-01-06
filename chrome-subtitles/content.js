@@ -51,34 +51,41 @@
   };
 
   Model.setVideoPlayer = function() {
+    var o, c;
     switch (domain) {
     case 'www.hulu.jp':
     case 'www.hulu.com':
+      o = document.getElementById('player');
+      c = document.getElementById('player-container');
       Model.videoPlayer = {
-        object: document.getelementById('player'),
-        container: document.getElementById('player-container'),
-        play: Model.videoPlayer.object.resumeVideo,
+        object: o,
+        container: c,
+        play: o.resumeVideo,
         pause: function() {},
-        seek: Model.videoPlayer.object.seekTo,
+        seek: o.seekTo,
         getCurrentTime: function() {},
         getPlayerState: function() {}
       };
       break;
     case 'www.youtube.com':
+      o = document.getElementById('movie_player');
+      c = document.getElementById('player-api');
       Model.videoPlayer = {
-        object: document.getElementById('movie_player'),
-        container: document.getElementById('player-api'),
-        play: Model.videoPlayer.object.playVideo,
-        pause: Model.videoPlayer.object.pauseVideo,
-        seek: Model.videoPlayer.object.seekTo,
-        getCurrentTime: Model.videoPlayer.object.getCurrentTime,
-        getPlayerState: Model.videoPlayer.object.getPlayerState
+        object: o,
+        container: c,
+        play: o.playVideo,
+        pause: o.pauseVideo,
+        seek: o.seekTo,
+        getCurrentTime: o.getCurrentTime,
+        getPlayerState: o.getPlayerState
       };
       break;
     default:
+      o = document.getElementById('player-object');
+      c = document.getElementById("player-container");
       Model.videoPlayer = {
-        object: document.getElementById('player-object'),
-        container: document.getElementById('player-container'),
+        object: o,
+        container: c,
         play: function() {},
         pause: function() {},
         seek: function() {},
