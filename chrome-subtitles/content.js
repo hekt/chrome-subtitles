@@ -60,9 +60,9 @@
       Model.videoPlayer = {
         object: o,
         container: c,
-        play: o.resumeVideo,
+        play: function() { o.resumeVideo(); },
         pause: function() {},
-        seek: o.seekTo,
+        seek: function() {},
         getCurrentTime: function() {},
         getPlayerState: function() {}
       };
@@ -428,7 +428,7 @@
     var advButton = document.getElementById('chrome-subtitles-adjust-advance');
     advButton.addEventListener('click', function() {
       var newDelay = Model.player.getDelay() - 100;
-      Model.palyer.setDelay(newDelay);
+      Model.player.setDelay(newDelay);
       console.log(newDelay + 'ms delay');
     });
     var resetButton = document.getElementById('chrome-subtitles-adjust-reset');
